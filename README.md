@@ -49,13 +49,14 @@ npm install
 # 2. Copy env template and fill in values
 cp .env.example .env.local
 
-# 3. Generate migrations from schema
+# 3. Generate migrations from schema (already committed; only run after edits)
 npm run db:generate
 
 # 4. Apply migrations + RLS policies
 npm run db:migrate
+#    Then run lib/db/policies/0001_rls.sql in the Supabase SQL editor.
 
-# 5. Seed a demo org and reviews
+# 5. (Optional) Seed system templates + a demo org
 npm run db:seed
 
 # 6. Run the dev server
@@ -63,6 +64,24 @@ npm run dev
 ```
 
 Open <http://localhost:3000>.
+
+### Generate an `ENCRYPTION_KEY`
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### Supabase Auth configuration
+
+In the Supabase dashboard:
+
+1. Enable **Email** provider (password sign-in).
+2. Enable **Google** provider with a Google OAuth client configured for
+   `openid email profile`. The Google Business Profile integration (PR #4)
+   uses a separate Google OAuth client with the `business.manage` scope.
+3. Set the redirect URL to
+   `https://<your-domain>/auth/callback` (and `http://localhost:3000/auth/callback`
+   in dev).
 
 ## Plans
 

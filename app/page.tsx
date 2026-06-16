@@ -1,6 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth/supabase-server";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+export default async function HomePage() {
+  const user = await getCurrentUser();
+  if (user) redirect("/dashboard");
+
+  return renderLanding();
+}
+
+function renderLanding() {
   return (
     <main className="container mx-auto flex min-h-screen flex-col items-center justify-center px-6 py-24 text-center">
       <span className="mb-6 rounded-full border bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">

@@ -89,6 +89,36 @@ plaintext (unacceptable).
 
 ---
 
+## 2026-06-16 — Idempotent bootstrap on every authed entry point
+
+**Decision:** `bootstrapUserOrg()` is called from both `/auth/callback` and the
+`(app)` layout. It upserts the user row, creates an org/membership/brand
+voice/usage counter/Stripe customer on first call, and is a no-op on subsequent
+calls.
+
+**Rationale:** Users can land in the app via three paths — fresh signup, email
+confirmation link, or returning login. Centralizing the setup in one
+idempotent function means we never end up with a "logged in but no org" zombie
+state, regardless of where Supabase drops the user.
+
+**Alternatives:** Force users to a separate `/setup` route (extra hop, confuses
+SSO returns), database trigger on `auth.users` insert (works but harder to
+debug and couples app logic to DB triggers).
+
+---
+
+## 2026-06-16 — Stripe customer creation is non-fatal during bootstrap
+
+**Decision:** If Stripe customer creation fails during bootstrap, the org is
+still created and `stripe_customer_id` stays `null`. The next call to
+`bootstrapUserOrg()` retries the Stripe call.
+
+**Rationale:** Stripe outages or missing dev keys should not block account
+creation. The retry-on-next-call pattern is simpler than a background job for
+this single side-effect.
+
+---
+
 ## 2026-06-16 — Review identity = `(source, source_review_id)`
 
 **Decision:** Reviews are deduplicated by `(source, source_review_id)` unique
