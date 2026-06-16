@@ -33,6 +33,9 @@ async function authedFetch<T>(path: string): Promise<T> {
   return (await res.json()) as T;
 }
 
+// Callers must `await requireEntitlement(orgId, "yelp.read")` before
+// invoking — Starter plan is not entitled.
+
 export async function fetchYelpReviews(
   yelpBusinessId: string,
 ): Promise<YelpReview[]> {

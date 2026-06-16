@@ -9,6 +9,9 @@ function client(): Twilio | null {
   return _client;
 }
 
+// Callers must `await requireEntitlement(orgId, "alerts.sms")` before
+// dispatching SMS — Starter plan is not entitled.
+
 /**
  * Send an SMS. No-op (returns null) when Twilio is not configured so dev
  * environments do not require Twilio creds.

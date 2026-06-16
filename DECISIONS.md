@@ -89,6 +89,50 @@ plaintext (unacceptable).
 
 ---
 
+## 2026-06-16 — Webhook is the source of truth for subscription state
+
+**Decision:** `/api/stripe/checkout` only creates the Checkout Session. The
+`subscriptions` row, `organizations.plan`, `organizations.trial_ends_at`, and
+the current-month `usage_counters` row are all written by the webhook handler
+in response to Stripe events.
+
+**Rationale:** Removes a class of bugs where the UI thinks the user is on
+Growth but Stripe hasn't actually started the subscription. The webhook is
+also retried by Stripe on 5xx, so state converges to whatever Stripe knows.
+
+**Implementation:**
+- Webhook signature verified with `STRIPE_WEBHOOK_SECRET` against the raw
+  body (Node runtime route).
+- Event-level dedup via Upstash Redis `SETNX` with a 24h TTL. If Redis is
+  unavailable we fail open — the per-event handlers are idempotent (Drizzle
+  upsert by `stripe_subscription_id` unique index).
+- On `customer.subscription.deleted` and `incomplete_expired`, org plan
+  degrades to "starter" so entitlements clean up automatically.
+- `organizations.stripe_customer_id` is only filled by the webhook when the
+  column is NULL — never overwritten.
+
+**Alternatives:** Trust the Checkout Session redirect query string (race
+condition before webhook arrives, easy to spoof).
+
+---
+
+## 2026-06-16 — Calendar-month usage buckets regardless of billing interval
+
+**Decision:** `usage_counters` is keyed by calendar month, not by
+subscription billing period. Annual subscribers still get a fresh quota each
+calendar month.
+
+**Rationale:** Quota is "50 AI responses per month" — that's a per-month
+metric. Tying it to Stripe billing periods would mean annual subscribers
+either get 1 quota for a year or we'd have to fabricate monthly sub-periods.
+
+**Implementation:** `usageCounters` has a unique index on
+`(org_id, period_start)`. Bootstrap and webhook handlers both call
+`ensureCurrentUsageCounter()` which `INSERT … ON CONFLICT DO NOTHING`. Quota
+checks use `gte(period_start, currentMonthStart)`.
+
+---
+
 ## 2026-06-16 — Idempotent bootstrap on every authed entry point
 
 **Decision:** `bootstrapUserOrg()` is called from both `/auth/callback` and the

@@ -44,6 +44,11 @@ export type GenerationResult = {
   costCents: number;
 };
 
+// PR #6/7 callers must:
+//   1. `await requireEntitlement(orgId, "ai.generate")`
+//   2. `await incrementAiUsage(orgId, 1, result.costCents)` after generation
+// from `lib/billing/entitlements` to enforce the Starter monthly quota.
+
 export async function generateResponseDrafts(
   input: PromptInput,
 ): Promise<GenerationResult> {
