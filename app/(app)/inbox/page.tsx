@@ -1,10 +1,21 @@
 import Link from "next/link";
-import { and, desc, eq, inArray, type SQL } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { requireOrgContext } from "@/lib/auth/org";
 import { db } from "@/lib/db/client";
-import { locations as locationsTable, reviews } from "@/lib/db/schema";
+import {
+  locations as locationsTable,
+  responseDrafts,
+  reviewResponses,
+  reviews,
+} from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -85,6 +96,16 @@ export default async function InboxPage({
     .select({
       review: reviews,
       locationName: locationsTable.name,
+      draftCount: sql<number>`(
+        select count(*)::int from ${responseDrafts}
+        where ${responseDrafts.reviewId} = ${reviews.id}
+      )`.as("draft_count"),
+      latestResponseStatus: sql<string | null>`(
+        select status::text from ${reviewResponses}
+        where ${reviewResponses.reviewId} = ${reviews.id}
+        order by ${reviewResponses.updatedAt} desc
+        limit 1
+      )`.as("response_status"),
     })
     .from(reviews)
     .leftJoin(locationsTable, eq(locationsTable.id, reviews.locationId))
@@ -112,37 +133,37 @@ export default async function InboxPage({
       {!hasAnyReviews ? (
         <Card>
           <CardContent className="py-8 text-center text-sm text-muted-foreground">
-            No reviews match the current filters.
-            {" "}
+            No reviews match the current filters.{" "}
             <Link href="/locations" className="underline">
               Connect a location and pull reviews
-            </Link>
-            {" "}to get started.
+            </Link>{" "}
+            to get started.
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-2">
-          {rows.map(({ review, locationName }) => (
+          {rows.map((row) => (
             <ReviewRow
-              key={review.id}
-              id={review.id}
-              rating={review.rating}
-              reviewerName={review.reviewerName}
-              body={review.body}
-              status={review.status}
-              source={review.source}
-              postedAt={review.postedAt}
-              locationName={locationName}
+              key={row.review.id}
+              id={row.review.id}
+              rating={row.review.rating}
+              reviewerName={row.review.reviewerName}
+              body={row.review.body}
+              status={row.review.status}
+              source={row.review.source}
+              postedAt={row.review.postedAt}
+              locationName={row.locationName}
+              draftCount={Number(row.draftCount ?? 0)}
+              responseStatus={row.latestResponseStatus}
             />
           ))}
         </div>
       )}
 
       <Alert>
-        <AlertTitle>AI drafts ship next</AlertTitle>
+        <AlertTitle>Bulk actions</AlertTitle>
         <AlertDescription>
-          The review detail view with 3 AI draft variants and the "Post to
-          Google" button lands in PR #5.
+          Pro-tier bulk generate and bulk approve ship in PR #7.
         </AlertDescription>
       </Alert>
     </div>
@@ -229,6 +250,8 @@ function ReviewRow({
   source,
   postedAt,
   locationName,
+  draftCount,
+  responseStatus,
 }: {
   id: string;
   rating: number;
@@ -238,17 +261,19 @@ function ReviewRow({
   source: string;
   postedAt: Date;
   locationName: string | null;
+  draftCount: number;
+  responseStatus: string | null;
 }) {
   const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
+  const action = quickAction({ status, draftCount, responseStatus });
+
   return (
     <Link
       href={`/reviews/${id}`}
-      className={cn(
-        "block rounded-md border bg-card p-4 text-sm transition-colors hover:bg-secondary/40",
-      )}
+      className="block rounded-md border bg-card p-4 text-sm transition-colors hover:bg-secondary/40"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-amber-500" aria-label={`${rating} stars`}>
             {stars}
           </span>
@@ -257,6 +282,11 @@ function ReviewRow({
           </span>
           <StatusBadge status={status} />
           <SourceBadge source={source} />
+          {draftCount > 0 && status !== "posted" ? (
+            <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-violet-700">
+              {draftCount} drafts
+            </span>
+          ) : null}
         </div>
         <span className="text-xs text-muted-foreground">
           {postedAt.toLocaleDateString()}
@@ -265,11 +295,45 @@ function ReviewRow({
       {body ? (
         <p className="mt-1 line-clamp-2 text-muted-foreground">{body}</p>
       ) : null}
-      {locationName ? (
-        <p className="mt-1 text-xs text-muted-foreground">{locationName}</p>
-      ) : null}
+      <div className="mt-1 flex items-center justify-between gap-3">
+        {locationName ? (
+          <p className="text-xs text-muted-foreground">{locationName}</p>
+        ) : (
+          <span />
+        )}
+        <span
+          className={cn(
+            "text-xs font-medium",
+            action.tone === "primary"
+              ? "text-primary"
+              : action.tone === "muted"
+                ? "text-muted-foreground"
+                : "text-emerald-600",
+          )}
+        >
+          {action.label} →
+        </span>
+      </div>
     </Link>
   );
+}
+
+function quickAction({
+  status,
+  draftCount,
+  responseStatus,
+}: {
+  status: string;
+  draftCount: number;
+  responseStatus: string | null;
+}): { label: string; tone: "primary" | "muted" | "success" } {
+  if (status === "posted" || responseStatus === "posted") {
+    return { label: "Posted", tone: "success" };
+  }
+  if (draftCount === 0) {
+    return { label: "Generate", tone: "primary" };
+  }
+  return { label: "Review drafts", tone: "primary" };
 }
 
 function StatusBadge({ status }: { status: string }) {

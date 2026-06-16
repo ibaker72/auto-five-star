@@ -6,13 +6,22 @@ import { requireOrgContext } from "@/lib/auth/org";
 import { getGoogleConnectionStatus } from "@/lib/integrations/google-tokens";
 import { db } from "@/lib/db/client";
 import { locations, reviews } from "@/lib/db/schema";
+import { PLAN_CONFIG } from "@/lib/billing/plans";
+import { getAiResponsesUsedThisMonth } from "@/lib/billing/entitlements";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const ctx = await requireOrgContext();
 
-  const [locRows, reviewRows, unansweredRows, googleStatus] = await Promise.all([
+  const [
+    locRows,
+    newReviewRows,
+    draftedReviewRows,
+    postedReviewRows,
+    aiUsed,
+    googleStatus,
+  ] = await Promise.all([
     db
       .select({ id: locations.id })
       .from(locations)
@@ -20,22 +29,38 @@ export default async function DashboardPage() {
     db
       .select({ id: reviews.id })
       .from(reviews)
-      .where(eq(reviews.orgId, ctx.org.id)),
+      .where(
+        and(eq(reviews.orgId, ctx.org.id), eq(reviews.status, "new")),
+      ),
     db
       .select({ id: reviews.id })
       .from(reviews)
       .where(
         and(
           eq(reviews.orgId, ctx.org.id),
-          inArray(reviews.status, ["new", "drafted"]),
+          inArray(reviews.status, ["drafted", "approved"]),
         ),
       ),
+    db
+      .select({ id: reviews.id })
+      .from(reviews)
+      .where(
+        and(eq(reviews.orgId, ctx.org.id), eq(reviews.status, "posted")),
+      ),
+    getAiResponsesUsedThisMonth(ctx.org.id),
     getGoogleConnectionStatus(ctx.org.id),
   ]);
+
+  const cfg = PLAN_CONFIG[ctx.org.plan];
+  const aiLabel =
+    cfg.monthlyAiResponses === null
+      ? `${aiUsed} (unlimited)`
+      : `${aiUsed} / ${cfg.monthlyAiResponses}`;
 
   const noLocations = locRows.length === 0;
   const notConnected = !googleStatus.connected;
   const showConnectCta = notConnected || noLocations;
+  const unanswered = newReviewRows.length + draftedReviewRows.length;
 
   return (
     <div className="space-y-8">
@@ -44,14 +69,18 @@ export default async function DashboardPage() {
           Welcome to AutoFiveStar
         </h1>
         <p className="text-sm text-muted-foreground">
-          Signed in as {ctx.user.email}. Plan: {ctx.org.plan}.
+          Signed in as {ctx.user.email}. Plan: {cfg.name}.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Locations connected" value={locRows.length} />
-        <Stat label="Reviews tracked" value={reviewRows.length} />
-        <Stat label="Unanswered" value={unansweredRows.length} />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="New reviews" value={newReviewRows.length} />
+        <Stat label="Drafted / approved" value={draftedReviewRows.length} />
+        <Stat label="Posted" value={postedReviewRows.length} />
+        <Stat
+          label="AI responses this month"
+          value={aiLabel}
+        />
       </div>
 
       {showConnectCta ? (
@@ -78,12 +107,17 @@ export default async function DashboardPage() {
           <CardHeader>
             <CardTitle>Inbox</CardTitle>
             <CardDescription>
-              {unansweredRows.length === 0
+              {unanswered === 0
                 ? "All caught up — nothing waiting for a reply."
-                : `${unansweredRows.length} review${unansweredRows.length === 1 ? "" : "s"} waiting for a reply.`}
+                : `${unanswered} review${unanswered === 1 ? "" : "s"} waiting for a reply.`}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/inbox?status=new">
+                Generate drafts for unanswered reviews
+              </Link>
+            </Button>
             <Button asChild variant="outline">
               <Link href="/inbox">Open inbox</Link>
             </Button>
@@ -94,7 +128,7 @@ export default async function DashboardPage() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value }: { label: string; value: number | string }) {
   return (
     <Card>
       <CardHeader className="pb-2">

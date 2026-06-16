@@ -16,6 +16,7 @@ export type AuditAction =
   | "reviews.pulled"
   | "draft.generated"
   | "draft.edited"
+  | "response.approved"
   | "response.posted"
   | "response.failed"
   | "review.skipped"
