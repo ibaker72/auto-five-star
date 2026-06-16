@@ -12,4 +12,4 @@ export default {
   dbCredentials: { url },
   strict: true,
   verbose: true,
-} satisfies Config;
+} as Config;

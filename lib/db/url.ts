@@ -4,6 +4,45 @@ type ResolveDatabaseUrlOptions = {
 
 const hasIpLikeHost = (host: string) => /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
 
+function deriveSupabaseProjectRef(): string | null {
+  const explicit = process.env.SUPABASE_PROJECT_REF?.trim();
+  if (explicit) return explicit;
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return null;
+
+  try {
+    const parsed = new URL(supabaseUrl);
+    const [projectRef] = parsed.hostname.split(".");
+    return projectRef?.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+function withSupabasePoolerTenantIdentifier(url: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return url;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  const isSupabasePooler = host.endsWith(".pooler.supabase.com");
+  if (!isSupabasePooler) return url;
+
+  const username = decodeURIComponent(parsed.username);
+  // Supabase pooler expects postgres.<project-ref> (or another role with suffix).
+  if (!username || username.includes(".")) return url;
+
+  const projectRef = deriveSupabaseProjectRef();
+  if (!projectRef) return url;
+
+  parsed.username = encodeURIComponent(`${username}.${projectRef}`);
+  return parsed.toString();
+}
+
 function withNeonTenantIdentifier(url: string): string {
   let parsed: URL;
   try {
@@ -44,5 +83,5 @@ export function resolveDatabaseUrl(options: ResolveDatabaseUrlOptions = {}): str
     throw new Error("DATABASE_URL or DIRECT_URL must be set");
   }
 
-  return withNeonTenantIdentifier(raw);
+  return withNeonTenantIdentifier(withSupabasePoolerTenantIdentifier(raw));
 }

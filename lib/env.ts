@@ -6,6 +6,7 @@ const serverSchema = z.object({
   // Supabase
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_JWT_SECRET: z.string().min(1).optional(),
+  SUPABASE_PROJECT_REF: z.string().min(1).optional(),
 
   // DB
   DATABASE_URL: z.string().url(),
