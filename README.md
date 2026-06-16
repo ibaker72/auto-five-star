@@ -102,6 +102,41 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 5. In the Stripe **Billing Portal** settings, enable cancellation, plan
    changes, payment method updates, and customer-updatable email/address.
 
+### Google Business Profile setup
+
+The GBP integration uses a separate Google OAuth client from the Supabase
+Google login because Supabase's hosted provider cannot pass arbitrary scopes
+like `business.manage`. They never share tokens.
+
+**For local dev / demo** (no Google Cloud setup required):
+
+- Leave `GBP_LIVE=false` (default).
+- Clicking "Connect Google" persists an encrypted synthetic token row and
+  shows fixture accounts / locations / reviews so the rest of the app is
+  usable end-to-end.
+
+**For production / live mode**:
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
+   create an **OAuth 2.0 Web Client**.
+2. Set the redirect URI to
+   `https://your-domain.com/api/integrations/google/callback`
+   (and `http://localhost:3000/api/integrations/google/callback` for dev).
+3. On the **OAuth consent screen** add the scope
+   `https://www.googleapis.com/auth/business.manage` and submit the app for
+   verification. While verification is pending you can add specific Google
+   accounts as **test users** to grant the scope without verification.
+4. Set in `.env.local`:
+   ```
+   GBP_LIVE=true
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   GOOGLE_REDIRECT_URI=https://your-domain.com/api/integrations/google/callback
+   ```
+5. OAuth tokens are AES-256-GCM-encrypted with `ENCRYPTION_KEY` before they
+   reach the DB (`integration_tokens.access_token_enc` /
+   `refresh_token_enc`).
+
 ### Supabase Auth configuration
 
 In the Supabase dashboard:

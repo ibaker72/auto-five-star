@@ -17,14 +17,55 @@ Week-by-week MVP tracker.
 - [x] Stripe Customer Portal
 - [x] Stripe webhook handler with signature verification + dedup
 - [x] Tier enforcement helpers (`lib/billing/entitlements.ts`)
-- [ ] Google OAuth flow (`business.manage`)
-- [ ] Encrypted token storage
-- [ ] GBP client: list accounts, list locations, select/connect
+- [x] Google OAuth flow (`business.manage`)
+- [x] Encrypted token storage + signed-state CSRF protection
+- [x] GBP client: list accounts, list locations, select/connect
+- [x] Upsert reviews by `source_review_id` (manual sync action)
+- [x] Review inbox (status / rating / source filters + detail link)
 - [ ] Inngest job: pull reviews every 15 min
-- [ ] Upsert reviews by `source_review_id`
-- [ ] Review inbox (unanswered/rating/date filters + detail panel)
 - [ ] Deploy to Vercel
 - [ ] Smoke test with real GBP
+
+### PR #4 smoke path (local — GBP connect + manual sync)
+
+Demo mode (no Google Cloud setup required):
+
+1. Make sure `.env.local` has `GBP_LIVE=false` (default) and
+   `ENCRYPTION_KEY` set.
+2. `npm run dev`, sign in, go to `/locations`.
+3. Click **Connect Google**. You'll be back at `/locations?google=connected`
+   instantly — an encrypted synthetic token row is in `integration_tokens`.
+4. Pick the **AutoFiveStar Demo HVAC** account (or Dental). A list of fake
+   locations appears.
+5. Click **Connect** on one. You land at `/locations?google=location_connected`
+   and the location appears in the "Connected locations" grid.
+6. Click **Pull reviews now** on the location. 8-12 fixture reviews land in
+   the DB and the badge updates.
+7. Go to `/inbox`. The reviews show with stars, reviewer name, status
+   badges, and source. Filter by status / rating / source.
+8. Click any review → `/reviews/[id]` shows the full review and the
+   placeholder for the AI drafts (PR #5).
+9. Try connecting a second location on Starter plan → the **Connect**
+   button is disabled with "Quota reached".
+
+Live mode (after Google approves `business.manage`):
+
+1. In Google Cloud Console, create an OAuth 2.0 Web client with redirect
+   `https://your-domain/api/integrations/google/callback`. Request the
+   `https://www.googleapis.com/auth/business.manage` scope on the OAuth
+   consent screen and submit for verification.
+2. Set `.env.local`:
+   ```
+   GBP_LIVE=true
+   GOOGLE_CLIENT_ID=...
+   GOOGLE_CLIENT_SECRET=...
+   GOOGLE_REDIRECT_URI=http://localhost:3000/api/integrations/google/callback
+   ```
+3. Restart dev. Click **Connect Google** → Google consent screen → land
+   back at `/locations?google=connected` with real tokens in
+   `integration_tokens`.
+4. Account / location picker now shows real GBP data. Connecting + pulling
+   reviews talks to the live API.
 
 ### PR #3 smoke path (local — Stripe billing)
 
