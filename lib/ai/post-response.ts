@@ -1,4 +1,3 @@
-import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
