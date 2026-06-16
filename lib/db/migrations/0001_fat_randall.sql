@@ -1,0 +1,2 @@
+DROP INDEX IF EXISTS "integration_tokens_org_provider_idx";--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS "integration_tokens_org_provider_uniq" ON "integration_tokens" USING btree ("org_id","provider");

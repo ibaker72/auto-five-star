@@ -13,6 +13,7 @@ export type AuditAction =
   | "location.connected"
   | "location.disconnected"
   | "review.synced"
+  | "reviews.pulled"
   | "draft.generated"
   | "draft.edited"
   | "response.posted"

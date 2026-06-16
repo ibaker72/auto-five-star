@@ -3,6 +3,7 @@ import { and, eq, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { requireOrgContext } from "@/lib/auth/org";
+import { getGoogleConnectionStatus } from "@/lib/integrations/google-tokens";
 import { db } from "@/lib/db/client";
 import { locations, reviews } from "@/lib/db/schema";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   const ctx = await requireOrgContext();
 
-  const [locRows, reviewRows, unansweredRows] = await Promise.all([
+  const [locRows, reviewRows, unansweredRows, googleStatus] = await Promise.all([
     db
       .select({ id: locations.id })
       .from(locations)
@@ -29,7 +30,12 @@ export default async function DashboardPage() {
           inArray(reviews.status, ["new", "drafted"]),
         ),
       ),
+    getGoogleConnectionStatus(ctx.org.id),
   ]);
+
+  const noLocations = locRows.length === 0;
+  const notConnected = !googleStatus.connected;
+  const showConnectCta = notConnected || noLocations;
 
   return (
     <div className="space-y-8">
@@ -48,20 +54,42 @@ export default async function DashboardPage() {
         <Stat label="Unanswered" value={unansweredRows.length} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Next step</CardTitle>
-          <CardDescription>
-            Connect your Google Business Profile to start pulling reviews.
-            Coming in the next PR.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline">
-            <Link href="/billing">View plan & billing</Link>
-          </Button>
-        </CardContent>
-      </Card>
+      {showConnectCta ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Next step</CardTitle>
+            <CardDescription>
+              {notConnected
+                ? "Connect your Google Business Profile to start pulling reviews."
+                : "Pick a location and pull your first reviews."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link href="/locations">Go to locations</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/billing">View plan & billing</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Inbox</CardTitle>
+            <CardDescription>
+              {unansweredRows.length === 0
+                ? "All caught up — nothing waiting for a reply."
+                : `${unansweredRows.length} review${unansweredRows.length === 1 ? "" : "s"} waiting for a reply.`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href="/inbox">Open inbox</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

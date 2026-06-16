@@ -432,7 +432,7 @@ export const integrationTokens = pgTable(
     ...ts(),
   },
   (t) => ({
-    orgProviderIdx: index("integration_tokens_org_provider_idx").on(
+    orgProviderUniq: uniqueIndex("integration_tokens_org_provider_uniq").on(
       t.orgId,
       t.provider,
     ),

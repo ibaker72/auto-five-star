@@ -133,6 +133,54 @@ checks use `gte(period_start, currentMonthStart)`.
 
 ---
 
+## 2026-06-16 — HMAC-signed OAuth state, no server-side state store
+
+**Decision:** OAuth state for the GBP flow is a base64url-encoded JSON payload
+`{intent, orgId, userId, nonce, exp}` signed with HMAC-SHA256 using
+`ENCRYPTION_KEY`. The callback verifies the signature and that `exp` is in
+the future before trusting it.
+
+**Rationale:** No Redis/DB round-trip for state. Tamper-proof. 10-minute TTL
+bounds replay window. Self-contained so it survives serverless cold starts.
+
+**Implementation:** `lib/oauth/state.ts` `signOAuthState` / `verifyOAuthState`.
+Callback also cross-checks the Supabase session user matches `state.userId`
+as defense in depth against CSRF + session-fixation combos.
+
+---
+
+## 2026-06-16 — `GBP_LIVE=false` skips the Google round-trip entirely
+
+**Decision:** In fixture mode, `/api/integrations/google/connect` does not
+redirect to Google at all — it directly writes an encrypted synthetic token
+row and redirects to `/locations?google=connected`.
+
+**Rationale:** Until `business.manage` is approved on the production OAuth
+client, going through Google would fail for anyone who isn't a test user. The
+fixture-mode shortcut keeps the local/demo path one click long, while
+`GBP_LIVE=true` exercises the real OAuth flow once approval lands.
+
+**Implementation:** `GOOGLE_CLIENT_ID` becomes optional when
+`GBP_LIVE=false`. Tokens stored in `integration_tokens` are still encrypted
+so the dev path exercises the at-rest crypto too.
+
+---
+
+## 2026-06-16 — Unique `(org_id, provider)` on `integration_tokens`
+
+**Decision:** Added a unique index on `(org_id, provider)` so that
+`saveGoogleTokens` can use `ON CONFLICT DO UPDATE` to refresh credentials
+on reconnect.
+
+**Rationale:** The MVP only supports one connection per provider per org.
+Multiple Google accounts per org is a Pro-tier story that would need agency
+mode and isn't on the 30-day plan.
+
+**Migration:** `lib/db/migrations/0001_fat_randall.sql` drops the previous
+non-unique index and replaces it with `integration_tokens_org_provider_uniq`.
+
+---
+
 ## 2026-06-16 — Idempotent bootstrap on every authed entry point
 
 **Decision:** `bootstrapUserOrg()` is called from both `/auth/callback` and the
