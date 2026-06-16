@@ -26,9 +26,13 @@ const serverSchema = z.object({
     .transform((v) => v === "true"),
 
   // OpenAI
-  OPENAI_API_KEY: z.string().min(1),
+  OPENAI_API_KEY: z.string().optional(), // optional when AI_LIVE=false
   OPENAI_MODEL_PRIMARY: z.string().default("gpt-4o"),
   OPENAI_MODEL_CLASSIFIER: z.string().default("gpt-4o-mini"),
+  AI_LIVE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Stripe
   STRIPE_SECRET_KEY: z.string().min(1),

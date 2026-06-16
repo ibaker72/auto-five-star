@@ -102,6 +102,26 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 5. In the Stripe **Billing Portal** settings, enable cancellation, plan
    changes, payment method updates, and customer-updatable email/address.
 
+### OpenAI / AI drafts
+
+The AI draft generator lives in `lib/ai/generate.ts` and uses the prompt at
+`lib/ai/prompts/responseGenerator.v1.ts` (versioned — bump the file name when
+the schema changes).
+
+**Modes:**
+- `AI_LIVE=false` (default) + `NODE_ENV !== "production"` → returns a
+  deterministic fixture (different copy for positive / neutral / negative
+  sentiment), no OpenAI call, no quota cost. Perfect for local dev / CI.
+- `AI_LIVE=true` → calls OpenAI with `OPENAI_MODEL_PRIMARY` (default
+  `gpt-4o`), structured JSON output, retry on 429/5xx with exponential
+  backoff.
+- In production with `AI_LIVE !== "true"`, generation throws
+  `OpenAiConfigError` — we refuse to silently fake AI for paying customers.
+
+Quota: one generation event counts as **1** AI response in
+`usage_counters.ai_responses_used` even though three variants are produced.
+Starter caps at 50/month; Growth and Pro are unlimited.
+
 ### Google Business Profile setup
 
 The GBP integration uses a separate Google OAuth client from the Supabase

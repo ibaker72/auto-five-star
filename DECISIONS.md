@@ -133,6 +133,67 @@ checks use `gte(period_start, currentMonthStart)`.
 
 ---
 
+## 2026-06-16 — Delete-then-insert for AI draft regeneration
+
+**Decision:** When the user requests a regenerate, we DELETE the prior batch
+of `response_drafts` for the review and INSERT a fresh batch in the same
+function. The audit log records every generation event so history is
+preserved without versioning columns on the table.
+
+**Rationale:** The UI only ever shows the latest variant set. Versioning
+would mean a `version` column, dedup queries on every read, and an explicit
+"go back to v2" UX we don't need. Deleting old drafts is safe because the
+user's chosen text already lives on `review_responses` once they hit Save.
+
+**Implementation:** `lib/ai/generate.ts` `generateDraftsForReview` takes a
+`force` flag. Without force, returns cached drafts (one OpenAI call avoided).
+With force, deletes old rows then inserts the new batch and audits with
+`forced: true`.
+
+---
+
+## 2026-06-16 — One generation event = 1 AI quota usage
+
+**Decision:** Producing three variants for a single review counts as **one**
+AI response in `usage_counters.ai_responses_used`. Saving, editing, approving,
+and posting do not increment usage.
+
+**Rationale:** The user-facing promise is "50 AI responses per month" — the
+variants are an implementation detail. Charging three quota units per review
+would hit the Starter cap after 17 reviews instead of 50.
+
+**Implementation:** `incrementAiUsage(orgId, 1, totalCostCents)` is called
+once per OpenAI round-trip. The 3 variant rows record their per-variant token
+share for accounting clarity, but quota is bumped by 1.
+
+---
+
+## 2026-06-16 — `AI_LIVE` flag mirrors `GBP_LIVE`
+
+**Decision:** Added an `AI_LIVE` env flag with the same semantics as
+`GBP_LIVE`. When `false` and `NODE_ENV !== "production"`, OpenAI is replaced
+with a deterministic fixture (different copy for positive / neutral /
+negative). In production we refuse to fall back: an explicit
+`OpenAiConfigError` is thrown.
+
+**Rationale:** Lets contributors and CI exercise the full pipeline without
+an `OPENAI_API_KEY`, but never silently fakes responses in front of a
+paying customer.
+
+---
+
+## 2026-06-16 — Posting is one click: approve-and-post when needed
+
+**Decision:** The "Post to Google" button accepts a saved draft regardless
+of `review_responses.status`. If the row is still `draft`, posting promotes
+it through `posted`. There is no required "Approve first, then post" sequence.
+
+**Rationale:** Owners told us the extra click felt bureaucratic. Approve
+still exists as a separate action for reviewers who want a pause; posting
+just doesn't require it.
+
+---
+
 ## 2026-06-16 — HMAC-signed OAuth state, no server-side state store
 
 **Decision:** OAuth state for the GBP flow is a base64url-encoded JSON payload
