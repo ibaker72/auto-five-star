@@ -71,6 +71,37 @@ Open <http://localhost:3000>.
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
+### Stripe setup
+
+1. Create three products in **test mode** (Starter, Growth, Pro), each with
+   one monthly and one yearly recurring price.
+2. Add the six price IDs to `.env.local`:
+   ```
+   STRIPE_PRICE_STARTER_MONTHLY=price_…
+   STRIPE_PRICE_STARTER_YEARLY=price_…
+   STRIPE_PRICE_GROWTH_MONTHLY=price_…
+   STRIPE_PRICE_GROWTH_YEARLY=price_…
+   STRIPE_PRICE_PRO_MONTHLY=price_…
+   STRIPE_PRICE_PRO_YEARLY=price_…
+   ```
+3. Install the [Stripe CLI](https://stripe.com/docs/stripe-cli) and forward
+   webhooks locally:
+   ```bash
+   stripe login
+   stripe listen --forward-to http://localhost:3000/api/stripe/webhook
+   ```
+   Copy the printed `whsec_…` into `STRIPE_WEBHOOK_SECRET`.
+4. In production, configure a Stripe Webhook endpoint pointed at
+   `https://your-domain.com/api/stripe/webhook` and subscribe to:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_succeeded`
+   - `invoice.payment_failed`
+5. In the Stripe **Billing Portal** settings, enable cancellation, plan
+   changes, payment method updates, and customer-updatable email/address.
+
 ### Supabase Auth configuration
 
 In the Supabase dashboard:

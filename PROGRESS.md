@@ -13,8 +13,10 @@ Week-by-week MVP tracker.
 - [x] Seed script (system templates + demo org)
 - [x] Supabase Auth (email + Google login on standard scopes)
 - [x] Org creation on signup + Stripe customer creation (idempotent bootstrap)
-- [ ] Stripe Checkout for Starter/Growth/Pro
-- [ ] Stripe webhook handler with signature verification
+- [x] Stripe Checkout for Starter/Growth/Pro (monthly + yearly)
+- [x] Stripe Customer Portal
+- [x] Stripe webhook handler with signature verification + dedup
+- [x] Tier enforcement helpers (`lib/billing/entitlements.ts`)
 - [ ] Google OAuth flow (`business.manage`)
 - [ ] Encrypted token storage
 - [ ] GBP client: list accounts, list locations, select/connect
@@ -23,6 +25,53 @@ Week-by-week MVP tracker.
 - [ ] Review inbox (unanswered/rating/date filters + detail panel)
 - [ ] Deploy to Vercel
 - [ ] Smoke test with real GBP
+
+### PR #3 smoke path (local — Stripe billing)
+
+1. Create three Stripe products in test mode (Starter, Growth, Pro), each
+   with one monthly and one yearly recurring price:
+   - Starter: $49/mo, $490/yr (2 months free baked in)
+   - Growth: $99/mo, $990/yr
+   - Pro: $199/mo, $1,990/yr
+2. Copy the six price IDs into `.env.local`:
+   `STRIPE_PRICE_STARTER_MONTHLY`, `STRIPE_PRICE_STARTER_YEARLY`,
+   `STRIPE_PRICE_GROWTH_MONTHLY`, `STRIPE_PRICE_GROWTH_YEARLY`,
+   `STRIPE_PRICE_PRO_MONTHLY`, `STRIPE_PRICE_PRO_YEARLY`.
+3. Install Stripe CLI: <https://stripe.com/docs/stripe-cli>.
+   ```bash
+   stripe login
+   stripe listen --forward-to http://localhost:3000/api/stripe/webhook
+   ```
+   Copy the `whsec_…` printed by `stripe listen` into
+   `STRIPE_WEBHOOK_SECRET` in `.env.local` and restart `npm run dev`.
+4. Sign up, go to `/billing`. Toggle monthly/yearly. Click "Start 14-day
+   trial" on Growth.
+5. Stripe Checkout opens. Use card `4242 4242 4242 4242`, any future expiry,
+   any CVC, any postal code.
+6. Redirect back to `/billing?checkout=success`. Within a few seconds the
+   webhook fires and updates:
+   - `subscriptions` row created
+   - `organizations.plan` updated to `growth`
+   - `organizations.trial_ends_at` set
+   - `usage_counters` row for the current month exists
+   - `audit_logs` has `subscription.created` entries
+7. Click "Open billing portal" → Stripe Portal → cancel subscription. The
+   `customer.subscription.updated` webhook syncs `cancel_at_period_end=true`,
+   and once the period ends `customer.subscription.deleted` reverts the org
+   plan to `starter`.
+8. Run `stripe trigger invoice.payment_failed` — webhook accepts it and
+   writes an audit log entry.
+
+### Webhook events handled
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.payment_succeeded`
+- `invoice.payment_failed`
+
+Unknown event types receive a 200 (Stripe will stop retrying).
 
 ### PR #2 smoke path (local)
 

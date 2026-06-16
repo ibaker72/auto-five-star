@@ -174,6 +174,9 @@ export function buildAuthUrl(state: string): string {
 // ---------------------------------------------------------------------------
 // Accounts / locations / reviews
 // ---------------------------------------------------------------------------
+// PR #4 will call `requireEntitlement(orgId, "locations.connect")` from
+// `lib/billing/entitlements` before persisting a new location selection.
+
 export async function listAccounts(tokens: GbpTokens): Promise<GbpAccount[]> {
   if (!LIVE) {
     return [

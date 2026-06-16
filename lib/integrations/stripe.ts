@@ -1,5 +1,5 @@
 import Stripe from "stripe";
-import type { Plan } from "@/lib/billing/plans";
+import type { BillingInterval, Plan } from "@/lib/billing/plans";
 
 let _stripe: Stripe | null = null;
 export function stripe(): Stripe {
@@ -15,7 +15,7 @@ export function stripe(): Stripe {
   return _stripe;
 }
 
-const PRICE_ENV: Record<Plan, { monthly: string; yearly: string }> = {
+const PRICE_ENV: Record<Plan, Record<BillingInterval, string>> = {
   starter: {
     monthly: "STRIPE_PRICE_STARTER_MONTHLY",
     yearly: "STRIPE_PRICE_STARTER_YEARLY",
@@ -30,17 +30,32 @@ const PRICE_ENV: Record<Plan, { monthly: string; yearly: string }> = {
   },
 };
 
-export function priceIdFor(plan: Plan, cycle: "monthly" | "yearly"): string {
-  const key = PRICE_ENV[plan][cycle];
+export class StripeConfigError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StripeConfigError";
+  }
+}
+
+export function priceIdFor(plan: Plan, interval: BillingInterval): string {
+  const key = PRICE_ENV[plan][interval];
   const value = process.env[key];
-  if (!value) throw new Error(`Missing env: ${key}`);
+  if (!value) {
+    throw new StripeConfigError(
+      `Stripe price env var ${key} is not set. Create the price in Stripe and add it to .env.local.`,
+    );
+  }
   return value;
 }
 
-export function planFromPriceId(priceId: string): Plan | null {
+export function planFromPriceId(
+  priceId: string,
+): { plan: Plan; interval: BillingInterval } | null {
   for (const plan of ["starter", "growth", "pro"] as const) {
-    for (const cycle of ["monthly", "yearly"] as const) {
-      if (process.env[PRICE_ENV[plan][cycle]] === priceId) return plan;
+    for (const interval of ["monthly", "yearly"] as const) {
+      if (process.env[PRICE_ENV[plan][interval]] === priceId) {
+        return { plan, interval };
+      }
     }
   }
   return null;
@@ -64,20 +79,32 @@ export async function createCheckoutSession(params: {
   successUrl: string;
   cancelUrl: string;
   orgId: string;
+  userId: string;
+  plan: Plan;
+  interval: BillingInterval;
   trialDays?: number;
 }): Promise<Stripe.Checkout.Session> {
+  const metadata = {
+    org_id: params.orgId,
+    user_id: params.userId,
+    plan: params.plan,
+    interval: params.interval,
+  };
   return stripe().checkout.sessions.create({
     mode: "subscription",
     customer: params.customerId,
     line_items: [{ price: params.priceId, quantity: 1 }],
     subscription_data: {
       trial_period_days: params.trialDays ?? 14,
-      metadata: { org_id: params.orgId },
+      metadata,
     },
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,
-    metadata: { org_id: params.orgId },
+    metadata,
     allow_promotion_codes: true,
+    payment_method_collection: "always",
+    billing_address_collection: "auto",
+    automatic_tax: { enabled: false },
   });
 }
 
