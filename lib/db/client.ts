@@ -1,11 +1,9 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
+import { resolveDatabaseUrl } from "./url";
 
-const url = process.env.DATABASE_URL;
-if (!url) {
-  throw new Error("DATABASE_URL is required");
-}
+const url = resolveDatabaseUrl();
 
 // In serverless runtimes we want a small pool; locally we want HMR safety.
 const globalForDb = globalThis as unknown as {

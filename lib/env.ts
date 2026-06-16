@@ -10,6 +10,7 @@ const serverSchema = z.object({
   // DB
   DATABASE_URL: z.string().url(),
   DIRECT_URL: z.string().url().optional(),
+  NEON_PROJECT_ID: z.string().min(1).optional(),
 
   // Encryption (64-char hex == 32 bytes)
   ENCRYPTION_KEY: z
