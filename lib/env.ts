@@ -45,14 +45,22 @@ const serverSchema = z.object({
   STRIPE_PRICE_PRO_YEARLY: z.string().min(1),
 
   // Resend
-  RESEND_API_KEY: z.string().min(1),
+  RESEND_API_KEY: z.string().optional(), // optional when EMAIL_LIVE=false
   RESEND_FROM_EMAIL: z.string().email().default("hello@autofivestar.com"),
   SUPPORT_EMAIL: z.string().email().default("support@autofivestar.com"),
+  EMAIL_LIVE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
-  // Twilio (optional in dev)
+  // Twilio (optional unless SMS_LIVE=true)
   TWILIO_ACCOUNT_SID: z.string().optional(),
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM_NUMBER: z.string().optional(),
+  SMS_LIVE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 
   // Yelp (optional in dev)
   YELP_API_KEY: z.string().optional(),

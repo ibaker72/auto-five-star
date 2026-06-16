@@ -133,6 +133,68 @@ checks use `gte(period_start, currentMonthStart)`.
 
 ---
 
+## 2026-06-16 — Two-hop Inngest fan-out for review polling
+
+**Decision:** The 15-minute cron only emits `reviews/sync.requested` events
+per eligible (org, location). The actual GBP fetch lives in a separate
+`pullReviewsForLocation` function with `concurrency: { limit: 5 }` and 3
+retries. When that function detects new reviews, it emits
+`reviews/new.detected` events that drive `sendReviewAlerts` (concurrency: 10,
+2 retries).
+
+**Rationale:** One big function for "iterate all orgs" would hit serverless
+timeouts as the customer base grows and would force the whole batch to retry
+on a single failure. Per-location functions are independently retryable and
+can be back-pressured without affecting other tenants. Alerts are also
+isolated: a flaky Twilio call doesn't block a Resend send.
+
+---
+
+## 2026-06-16 — Negative reviews send now; 3/4/5-star queue digest-pending rows
+
+**Decision:** 1–2 star reviews trigger an email immediately (and SMS for
+Growth/Pro when consented). 3-star reviews queue a `daily_digest_pending`
+notification row, 4–5 star reviews queue `weekly_digest_pending`. The
+digest jobs themselves are out of scope for PR #6 — the rows just sit in
+the queue.
+
+**Rationale:** Owners want to react fast to negative reviews; positive
+reviews are batchable and inbox-noise if sent one-at-a-time. Recording the
+intent now (one row per review per recipient) means the future digest job
+is a simple "select queued rows since last digest" — no replay of polling
+required.
+
+---
+
+## 2026-06-16 — `EMAIL_LIVE` and `SMS_LIVE` mirror `AI_LIVE` semantics
+
+**Decision:** Added `EMAIL_LIVE` and `SMS_LIVE` env flags. In dev with the
+flag false, sending is replaced with a console-logged fixture and the
+`notifications.status` is set to `sent` with a `fixture: true` flag merged
+into the payload via JSONB concat. In production with the flag false, we
+deliberately mark the notification `skipped` (with `errorMessage="sms_disabled"`
+for SMS) rather than throwing — letting operators ship the app before Resend
+domain verification or Twilio A2P approval lands without flooding error logs.
+
+**Rationale:** Both providers have multi-week onboarding (Resend domain
+verification, Twilio A2P 10DLC campaign). Without a skip path we'd block
+launch on either step.
+
+---
+
+## 2026-06-16 — Notification phone lives on `users`, not a separate profile table
+
+**Decision:** Added three columns to `users`: `notification_phone` (text,
+nullable), `alerts_email_enabled` (bool, default true), `alerts_sms_enabled`
+(bool, default false). Settings UI writes to these directly.
+
+**Rationale:** A separate `user_profiles` table is the right call once
+notification preferences fan out across multiple channels and per-org
+overrides. For the MVP, the user is the unit — one phone, one email opt-in,
+one SMS opt-in. We accept the column count cost.
+
+---
+
 ## 2026-06-16 — Delete-then-insert for AI draft regeneration
 
 **Decision:** When the user requests a regenerate, we DELETE the prior batch
