@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222 47% 11%;
 
@@ -61,6 +62,9 @@
 @layer base {
   * {
     @apply border-border;
+  }
+  html {
+    @apply bg-background text-foreground;
   }
   body {
     @apply bg-background text-foreground antialiased;
