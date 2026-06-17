@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
 import { bootstrapUserOrg } from "@/lib/auth/bootstrap";
+import { posthog } from "@/lib/posthog";
 
 /**
  * Supabase Auth callback handler.
@@ -46,14 +47,38 @@ export async function GET(request: NextRequest) {
 
   try {
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const fullName = typeof meta.full_name === "string" ? meta.full_name : null;
     const result = await bootstrapUserOrg({
       userId: user.id,
       email: user.email,
-      fullName:
-        typeof meta.full_name === "string" ? meta.full_name : null,
+      fullName,
       avatarUrl:
         typeof meta.avatar_url === "string" ? meta.avatar_url : null,
     });
+
+    posthog.identify({
+      distinctId: user.id,
+      properties: {
+        email: user.email,
+        name: fullName ?? undefined,
+        org_id: result.org.id,
+      },
+    });
+
+    if (result.isNewOrg) {
+      posthog.capture({
+        distinctId: user.id,
+        event: "user_signed_up",
+        properties: { method: "google_oauth", email: user.email },
+      });
+    } else {
+      posthog.capture({
+        distinctId: user.id,
+        event: "user_logged_in",
+        properties: { method: "google_oauth" },
+      });
+    }
+
     const destination =
       next ?? (result.isNewOrg ? "/onboarding" : "/dashboard");
     const dest = url.clone();
@@ -62,6 +87,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(dest);
   } catch (err) {
     console.error("[auth/callback] bootstrap failed", err);
+    posthog.captureException(err, user.id);
     const back = url.clone();
     back.pathname = "/login";
     back.searchParams.set(

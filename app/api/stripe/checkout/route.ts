@@ -16,6 +16,7 @@ import {
   TRIAL_DAYS,
 } from "@/lib/billing/plans";
 import { writeAudit } from "@/lib/audit";
+import { posthog } from "@/lib/posthog";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +113,12 @@ export async function POST(request: NextRequest) {
       targetType: "checkout_session",
       targetId: session.id,
       metadata: { plan, interval, status: "session_created" },
+    });
+
+    posthog.capture({
+      distinctId: user.id,
+      event: "subscription_checkout_started",
+      properties: { org_id: org.id, plan, interval, trial_days: TRIAL_DAYS },
     });
 
     if (!session.url) {

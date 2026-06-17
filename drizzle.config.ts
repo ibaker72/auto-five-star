@@ -1,9 +1,11 @@
 import type { Config } from "drizzle-kit";
+import { resolveDatabaseUrl } from "./lib/db/url";
 
-const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
-if (!url) {
-  throw new Error("DATABASE_URL or DIRECT_URL must be set for drizzle-kit");
-}
+// drizzle-kit runs schema introspection / push / generate against a real DB
+// only for the `push` and `studio` commands. We still need a URL for those
+// flows. Resolution mirrors `lib/db/migrate.ts`: prefer the direct URL so we
+// don't hit Supabase's pooler (PgBouncer transaction mode can't run DDL).
+const url = resolveDatabaseUrl({ preferDirect: true });
 
 export default {
   schema: "./lib/db/schema.ts",
@@ -12,4 +14,4 @@ export default {
   dbCredentials: { url },
   strict: true,
   verbose: true,
-} satisfies Config;
+} as Config;

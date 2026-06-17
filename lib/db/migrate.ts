@@ -1,10 +1,10 @@
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import { resolveDatabaseUrl } from "./url";
 
 async function main() {
-  const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
-  if (!url) throw new Error("DATABASE_URL or DIRECT_URL must be set");
+  const url = resolveDatabaseUrl({ preferDirect: true });
 
   const client = postgres(url, { max: 1, prepare: false });
   const db = drizzle(client);

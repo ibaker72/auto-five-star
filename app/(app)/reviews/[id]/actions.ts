@@ -19,6 +19,7 @@ import {
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/audit";
 import { EntitlementError } from "@/lib/billing/entitlements";
+import { posthog } from "@/lib/posthog";
 
 type ReviewActionResult =
   | { ok: true; message?: string }
@@ -59,6 +60,12 @@ export async function generateDraftsAction(
           : "Could not generate drafts. Please retry.",
     };
   }
+
+  posthog.capture({
+    distinctId: ctx.user.id,
+    event: "ai_drafts_generated",
+    properties: { org_id: ctx.org.id, review_id: reviewId, forced: force },
+  });
 
   revalidatePath(`/reviews/${reviewId}`);
   revalidatePath("/inbox");
@@ -159,6 +166,19 @@ export async function saveResponseAction(
     metadata: { length: body.length, draft_id: draftId ?? null },
   });
 
+  if (targetStatus === "approved") {
+    posthog.capture({
+      distinctId: ctx.user.id,
+      event: "response_approved",
+      properties: {
+        org_id: ctx.org.id,
+        review_id: reviewId,
+        draft_id: draftId ?? null,
+        response_length: body.length,
+      },
+    });
+  }
+
   revalidatePath(`/reviews/${reviewId}`);
   revalidatePath("/inbox");
   revalidatePath("/dashboard");
@@ -191,6 +211,12 @@ export async function postResponseAction(
     revalidatePath(`/reviews/${reviewId}`);
     redirect(reviewPath(reviewId, { error: message }));
   }
+
+  posthog.capture({
+    distinctId: ctx.user.id,
+    event: "response_posted_to_google",
+    properties: { org_id: ctx.org.id, review_id: reviewId },
+  });
 
   revalidatePath(`/reviews/${reviewId}`);
   revalidatePath("/inbox");

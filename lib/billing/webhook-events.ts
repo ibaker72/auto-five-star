@@ -12,6 +12,7 @@ import { Redis } from "@upstash/redis";
 import { planFromPriceId } from "@/lib/integrations/stripe";
 import { writeAudit } from "@/lib/audit";
 import { type Plan } from "./plans";
+import { posthog } from "@/lib/posthog";
 
 let _redis: Redis | null = null;
 function redis(): Redis | null {
@@ -231,6 +232,19 @@ export async function handleSubscriptionUpsert(
       cancel_at_period_end: sub.cancel_at_period_end ?? false,
     },
   });
+
+  if (event.type === "customer.subscription.created" && sub.status === "active") {
+    posthog.capture({
+      distinctId: orgId,
+      event: "subscription_activated",
+      properties: {
+        org_id: orgId,
+        plan: planLookup.plan,
+        status: sub.status,
+        stripe_subscription_id: sub.id,
+      },
+    });
+  }
 }
 
 export async function handleSubscriptionDeleted(
@@ -261,6 +275,16 @@ export async function handleSubscriptionDeleted(
     targetType: "stripe_subscription",
     targetId: sub.id,
     metadata: { status: sub.status },
+  });
+
+  posthog.capture({
+    distinctId: orgId,
+    event: "subscription_canceled",
+    properties: {
+      org_id: orgId,
+      plan: planLookup?.plan ?? null,
+      stripe_subscription_id: sub.id,
+    },
   });
 }
 
