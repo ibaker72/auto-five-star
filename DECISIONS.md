@@ -133,6 +133,59 @@ checks use `gte(period_start, currentMonthStart)`.
 
 ---
 
+## 2026-06-16 — Audit funnel tables are server-only (RLS locked, no anon policies)
+
+**Decision:** `audit_leads`, `audit_requests`, and `funnel_events` have RLS
+enabled but **no** anon/authenticated policies. All reads and writes go
+through Drizzle (the postgres superuser, which bypasses RLS). The marketing
+form posts to `/api/audit` and the results page reads via the server
+component — neither uses the Supabase client.
+
+**Rationale:** Pre-customer leads aren't tenant-scoped. Building
+auth-aware RLS for an unauthenticated funnel would require fake anon tokens
+or per-row policy gymnastics. Server-only access is the simpler, safer
+default; the API route is rate-limited (10/hour/IP, 5/hour/email) so we
+don't need a separate denial layer.
+
+---
+
+## 2026-06-16 — Demo-mode audit by default, with a clear UI label
+
+**Decision:** The first audit for any business is generated in **demo
+mode** — `audit_requests.demo_mode = true`, inputs derived deterministically
+from a seed of `${business}|${email}|${requestId}` so refreshes are stable.
+The results page renders a prominent "Demo data" alert and the email
+acknowledges it.
+
+**Rationale:** We can't read a prospect's live Google reviews without an
+OAuth scope they haven't granted yet. The choices were: (a) fake nothing
+and tell prospects to sign up first (kills the funnel), (b) fake data
+silently (deceptive), or (c) generate a plausible representative report
+and **label it**. We picked (c).
+
+**Implementation:** `lib/audit/score.ts` `buildDemoInputs(seed)` generates
+a believable rating / volume / recency / response-rate distribution via
+FNV-1a hashing. `computeReputationReport` is a pure deterministic function
+shared with the real-data path that we'll wire in once we have GBP scopes
+on the marketing side.
+
+---
+
+## 2026-06-16 — Funnel events with `sendBeacon` for click tracking
+
+**Decision:** Conversion clicks on the audit results page fire
+`/api/funnel/event` via `navigator.sendBeacon` (with a `fetch` +
+`keepalive: true` fallback) **before** redirecting via
+`window.location.href`. The endpoint is fire-and-forget — server-side
+errors are logged and never surface to the user.
+
+**Rationale:** A normal `fetch` would race the navigation and often get
+cancelled. `sendBeacon` is built for exactly this case (analytics on
+unload). The endpoint validates event type against a whitelist, so a
+crafted POST can only record one of nine allowed events.
+
+---
+
 ## 2026-06-16 — Onboarding step stored as text, not enum
 
 **Decision:** `organizations.onboarding_step` is a free-text column whose
