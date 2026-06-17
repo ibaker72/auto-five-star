@@ -16,7 +16,9 @@ import {
   reviewResponses,
   reviews,
 } from "@/lib/db/schema";
+import { PLAN_CONFIG } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
+import { BulkActionsBar } from "./bulk-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +51,9 @@ type SearchParams = {
   status?: string;
   rating?: string;
   source?: string;
+  bulk?: string;
+  count?: string;
+  message?: string;
 };
 
 const VALID_STATUSES = [
@@ -114,6 +119,7 @@ export default async function InboxPage({
     .limit(100);
 
   const hasAnyReviews = rows.length > 0;
+  const bulkAllowed = PLAN_CONFIG[ctx.org.plan].bulkActions;
 
   return (
     <div className="space-y-6">
@@ -124,11 +130,20 @@ export default async function InboxPage({
         </p>
       </div>
 
+      <Notice searchParams={searchParams} />
+
       <FilterBar
         status={statusFilter}
         rating={ratingFilter}
         source={sourceFilter}
       />
+
+      {hasAnyReviews ? (
+        <BulkActionsBar
+          bulkAllowed={bulkAllowed}
+          reviewIds={rows.map((r) => r.review.id)}
+        />
+      ) : null}
 
       {!hasAnyReviews ? (
         <Card>
@@ -159,14 +174,34 @@ export default async function InboxPage({
           ))}
         </div>
       )}
+    </div>
+  );
+}
 
-      <Alert>
-        <AlertTitle>Bulk actions</AlertTitle>
+function Notice({ searchParams }: { searchParams: SearchParams }) {
+  if (!searchParams.bulk) return null;
+  if (searchParams.bulk === "error") {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Bulk action failed</AlertTitle>
         <AlertDescription>
-          Pro-tier bulk generate and bulk approve ship in PR #7.
+          {searchParams.message ?? "Please try again."}
         </AlertDescription>
       </Alert>
-    </div>
+    );
+  }
+  const labels: Record<string, string> = {
+    generated: "drafts ready",
+    posted: "posted to Google",
+    marked_skipped: "marked skipped",
+  };
+  return (
+    <Alert variant="success">
+      <AlertTitle>Bulk action complete</AlertTitle>
+      <AlertDescription>
+        {searchParams.count ?? "0"} review(s) {labels[searchParams.bulk] ?? "processed"}.
+      </AlertDescription>
+    </Alert>
   );
 }
 
@@ -270,58 +305,63 @@ function ReviewRow({
     rating <= 2 && status !== "posted" && responseStatus !== "posted";
 
   return (
-    <Link
-      href={`/reviews/${id}`}
-      className="block rounded-md border bg-card p-4 text-sm transition-colors hover:bg-secondary/40"
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-amber-500" aria-label={`${rating} stars`}>
-            {stars}
-          </span>
-          <span className="font-medium text-foreground">
-            {reviewerName ?? "Anonymous"}
-          </span>
-          <StatusBadge status={status} />
-          <SourceBadge source={source} />
-          {needsAttention ? (
-            <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-rose-700">
-              Needs attention
+    <div className="flex items-start gap-3 rounded-md border bg-card p-4 text-sm transition-colors hover:bg-secondary/40">
+      <input
+        type="checkbox"
+        data-review-id={id}
+        aria-label="Select review"
+        className="mt-1 h-4 w-4 rounded border-input"
+      />
+      <Link href={`/reviews/${id}`} className="flex-1 min-w-0">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-amber-500" aria-label={`${rating} stars`}>
+              {stars}
             </span>
-          ) : null}
-          {draftCount > 0 && status !== "posted" ? (
-            <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-violet-700">
-              {draftCount} drafts
+            <span className="font-medium text-foreground">
+              {reviewerName ?? "Anonymous"}
             </span>
-          ) : null}
+            <StatusBadge status={status} />
+            <SourceBadge source={source} />
+            {needsAttention ? (
+              <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-rose-700">
+                Needs attention
+              </span>
+            ) : null}
+            {draftCount > 0 && status !== "posted" ? (
+              <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-violet-700">
+                {draftCount} drafts
+              </span>
+            ) : null}
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {postedAt.toLocaleDateString()}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {postedAt.toLocaleDateString()}
-        </span>
-      </div>
-      {body ? (
-        <p className="mt-1 line-clamp-2 text-muted-foreground">{body}</p>
-      ) : null}
-      <div className="mt-1 flex items-center justify-between gap-3">
-        {locationName ? (
-          <p className="text-xs text-muted-foreground">{locationName}</p>
-        ) : (
-          <span />
-        )}
-        <span
-          className={cn(
-            "text-xs font-medium",
-            action.tone === "primary"
-              ? "text-primary"
-              : action.tone === "muted"
-                ? "text-muted-foreground"
-                : "text-emerald-600",
+        {body ? (
+          <p className="mt-1 line-clamp-2 text-muted-foreground">{body}</p>
+        ) : null}
+        <div className="mt-1 flex items-center justify-between gap-3">
+          {locationName ? (
+            <p className="text-xs text-muted-foreground">{locationName}</p>
+          ) : (
+            <span />
           )}
-        >
-          {action.label} →
-        </span>
-      </div>
-    </Link>
+          <span
+            className={cn(
+              "text-xs font-medium",
+              action.tone === "primary"
+                ? "text-primary"
+                : action.tone === "muted"
+                  ? "text-muted-foreground"
+                  : "text-emerald-600",
+            )}
+          >
+            {action.label} →
+          </span>
+        </div>
+      </Link>
+    </div>
   );
 }
 

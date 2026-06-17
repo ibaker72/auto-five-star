@@ -18,6 +18,13 @@ export type PromptInput = {
     brevity: number;
     samples: string[];
   };
+  /**
+   * Optional plain-English brand-voice instructions composed by
+   * lib/ai/brand-voice.ts from the org's tone preset + length + emoji +
+   * signature + custom notes + industry pack. Inserted into the user message
+   * so callers can keep the system prompt stable.
+   */
+  brandVoiceInstructions?: string | null;
   review: {
     rating: number;
     reviewerName?: string | null;
@@ -58,15 +65,20 @@ Flags can include: "legal_risk", "needs_owner_review", "mentions_competitor", "o
 `;
 
 export function buildUserMessage(input: PromptInput): string {
-  const { business, location, voice, review } = input;
+  const { business, location, voice, review, brandVoiceInstructions } = input;
   const samples =
     voice.samples.length > 0
       ? voice.samples.map((s, i) => `${i + 1}. "${s}"`).join("\n")
       : "(no samples — fall back to a balanced friendly-professional tone)";
 
+  const voiceBlock =
+    brandVoiceInstructions && brandVoiceInstructions.trim().length > 0
+      ? `\nBRAND VOICE GUIDANCE:\n${brandVoiceInstructions.trim()}\n`
+      : "";
+
   return `BUSINESS: ${business.name}${business.industry ? ` (${business.industry})` : ""}
 LOCATION: ${location.name}${location.city ? `, ${location.city}` : ""}${location.state ? `, ${location.state}` : ""}
-
+${voiceBlock}
 BRAND VOICE (0-100 scale):
 - formal: ${voice.formal}
 - warm: ${voice.warm}

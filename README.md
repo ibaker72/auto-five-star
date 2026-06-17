@@ -102,6 +102,77 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 5. In the Stripe **Billing Portal** settings, enable cancellation, plan
    changes, payment method updates, and customer-updatable email/address.
 
+### Onboarding wizard
+
+New users land in a 6-step wizard at `/onboarding`:
+
+1. **Welcome** — overview, skip-for-now option
+2. **Business** — confirm org name
+3. **Industry** — pick from 10 packs (HVAC, plumbing, roofing, auto dealer,
+   auto repair, dentist, restaurant, gym, cleaning, general). The pick
+   seeds the brand voice with the pack defaults.
+4. **Google** — links to `/locations` to start the GBP OAuth flow; can be
+   skipped and revisited.
+5. **Notifications** — email/SMS toggles + phone number
+6. **Brand voice** — tone preset (professional / friendly / warm / luxury /
+   direct), response length (short / medium / detailed), emoji policy,
+   signature, custom notes
+
+Progress is stored on `organizations.onboarding_step`. Completion sets
+`organizations.onboarding_completed_at` and removes the "Finish setup"
+badge from the app nav. Users can always reopen `/onboarding` and any step
+also appears as standalone forms in `/settings`.
+
+### Industry template packs
+
+`lib/templates/industry-packs.ts` exposes ten packs. Each pack ships:
+
+- Default brand voice (tone preset + response length + emoji)
+- Response style guidance the AI sees verbatim
+- Review-request tone (used by a future automated-request feature)
+- Caution phrases (claims to avoid for this vertical)
+- Alert frequency recommendations
+
+`lib/ai/brand-voice.ts` `buildBrandVoiceInstructions` composes the pack
+guidance + the org's stored brand voice into a plain-English block that
+gets injected into the user message of `responseGenerator.v1`. Safe
+defaults fall back to a professional medium-length voice with no emojis
+and the avoid-claims rules from the prompt itself.
+
+### Analytics
+
+`lib/analytics/reviews.ts` `computeReviewAnalytics(orgId)` returns:
+
+- Total reviews, average rating, posted count, response rate
+- Reviews this week, this month
+- Unanswered count and urgent-unanswered count (1-2 stars)
+- Rating distribution (1-5)
+- 8-week posting trend (count + avg rating per bucket)
+- Last sync timestamp
+
+`/dashboard` consumes this for the stats grid plus two lightweight CSS-bar
+visualizations (rating distribution + trend). No additional dependencies.
+
+### Bulk actions (Pro)
+
+Inbox rows have selection checkboxes. The sticky bulk-actions bar at the
+top of `/inbox` enables:
+
+- **Generate drafts** — runs `generateDraftsForReview` per selection.
+  Returns early on quota hit with a friendly message.
+- **Post selected** — runs `postResponseToGoogle` per selection. Skips
+  Yelp and reviews without a saved response.
+- **Mark skipped** — flips `reviews.status` to `skipped` so they fall out
+  of the unanswered queue.
+- **Export CSV** — `POST /api/reviews/export` with the selected ids
+  downloads a CSV (id, source, location, reviewer, rating, body, status,
+  sentiment, posted_at). Max 500 rows per export, 50 per other bulk
+  action.
+
+All bulk actions go through `requireEntitlement(orgId, "actions.bulk")`,
+which only Pro satisfies. Non-Pro users see a disabled bar with an
+"Upgrade →" link. Single-review actions are unaffected.
+
 ### Inngest background jobs
 
 Three functions live under `lib/inngest/functions/`:

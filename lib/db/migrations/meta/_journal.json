@@ -22,6 +22,13 @@
       "when": 1781625633856,
       "tag": "0002_faithful_jack_murdock",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1781660251525,
+      "tag": "0003_steady_patch",
+      "breakpoints": true
     }
   ]
 }

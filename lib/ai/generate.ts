@@ -23,6 +23,8 @@ import {
   PROMPT_VERSION,
   type PromptInput,
 } from "@/lib/ai/prompts/responseGenerator.v1";
+import { buildBrandVoiceInstructions } from "@/lib/ai/brand-voice";
+import { getIndustryPack } from "@/lib/templates/industry-packs";
 
 export class ReviewNotFoundError extends Error {
   constructor() {
@@ -104,6 +106,17 @@ export async function generateDraftsForReview(
     .limit(1)
     .then((r) => r[0] ?? null);
 
+  // Resolve the industry pack (from the brand voice row first, else the org's
+  // top-level industry hint set during onboarding).
+  const industryPack =
+    getIndustryPack(voiceRow?.industryPack) ??
+    getIndustryPack(review.org.industry);
+
+  const brandVoiceInstructions = buildBrandVoiceInstructions({
+    voice: voiceRow,
+    industryPack,
+  });
+
   // Build prompt input. We intentionally include only the fields the prompt
   // needs — no DB ids, no internal status, no PII beyond what the reviewer
   // already shared publicly.
@@ -123,6 +136,7 @@ export async function generateDraftsForReview(
       brevity: voiceRow?.toneBrevity ?? 50,
       samples: voiceRow?.samples ?? [],
     },
+    brandVoiceInstructions,
     review: {
       rating: review.review.rating,
       reviewerName: review.review.reviewerName,
