@@ -4,8 +4,12 @@ import {
   pullReviewsCron,
   pullReviewsForLocation,
 } from "@/lib/inngest/functions/pullReviews";
+import { sendReviewAlerts } from "@/lib/inngest/functions/sendAlerts";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [pullReviewsCron, pullReviewsForLocation],
+  functions: [pullReviewsCron, pullReviewsForLocation, sendReviewAlerts],
 });

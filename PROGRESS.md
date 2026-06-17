@@ -26,6 +26,66 @@ Week-by-week MVP tracker.
 - [ ] Deploy to Vercel
 - [ ] Smoke test with real GBP
 
+### PR #6 smoke path (local — poller + alerts)
+
+Prereqs: PR #4 (Google connected, location connected) + PR #5 (AI generate
+working).
+
+1. Apply the new migration in Supabase:
+   `lib/db/migrations/0002_faithful_jack_murdock.sql` (adds three columns
+   to `users` + adds `skipped` to the `notification_status` enum).
+2. Install Inngest CLI: `npm i -g inngest-cli` (or
+   `npx inngest-cli@latest dev`).
+3. Start the Inngest dev server in another terminal:
+   ```bash
+   npx inngest-cli@latest dev
+   ```
+   It auto-discovers <http://localhost:3000/api/inngest>. Visit
+   <http://localhost:8288> to inspect runs.
+4. Start the Next.js app: `npm run dev`. The poller is now registered.
+5. Open `/settings` → enable Email alerts (default on), enable SMS alerts
+   if the org is on Growth/Pro, fill in `+15551234567` as the
+   notification phone. Save.
+6. Trigger the cron manually from the Inngest dev UI:
+   - Functions → `pull-reviews-cron` → "Invoke"
+   - Or send a `reviews/sync.requested` event with
+     `{ "orgId": "...", "locationId": "..." }` to skip the cron.
+7. Expected behavior (in fixture modes `GBP_LIVE=false`, `EMAIL_LIVE=false`,
+   `SMS_LIVE=false`):
+   - `pullGoogleReviews` upserts 8–12 fixture reviews per location.
+   - On the **first run** every review is `inserted`, so each one fans out a
+     `reviews/new.detected` event.
+   - For each event:
+     - 1–2 star → email sent (fixture log) + SMS sent (fixture log if
+       Growth/Pro + phone + opted in)
+     - 3 star → `notifications` row with `event=review.alert.daily_digest_pending`,
+       `status=queued`
+     - 4–5 star → `event=review.alert.weekly_digest_pending`, `status=queued`
+   - On **subsequent runs** no new review IDs come back (xmax≠0 on upsert),
+     so no events fan out.
+8. Verify in DB:
+   - `notifications` has one row per (recipient × channel × review) and
+     payload contains the review and location ids
+   - `_fixture: true` merged into payload for fixture-sent rows
+   - Skipped rows have `errorMessage` like `missing_phone_number`,
+     `alerts_sms_disabled`, `plan_does_not_allow_sms`, or `sms_disabled`
+9. `/dashboard` shows:
+   - "Last review sync" timestamp in the header
+   - "Negative reviews to handle" card listing up to 3 urgent reviews
+   - "Pull reviews now" ghost button
+10. `/inbox` rows show the rose **Needs attention** pill on unanswered 1–2
+    star reviews.
+
+Live mode (when ready):
+
+- `RESEND_API_KEY=re_…`, `RESEND_FROM_EMAIL=hello@your-domain.com`,
+  `EMAIL_LIVE=true` — once your domain is verified at Resend.
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_NUMBER`,
+  `SMS_LIVE=true` — only after A2P 10DLC campaign approval.
+- Production with `EMAIL_LIVE=false` / `SMS_LIVE=false` still works: those
+  notifications get `status=skipped` with a clear `errorMessage` instead of
+  silently swallowing the alert.
+
 ### PR #5 smoke path (local — AI drafts + post to Google)
 
 Prereqs from PR #4: signed up, connected Google (fixture mode), pulled
@@ -203,8 +263,11 @@ Unknown event types receive a 200 (Stripe will stop retrying).
 - [x] Update review status + write audit log
 - [x] Yelp read-only pull (PR #4 fixture; UI shows "copy to clipboard" with
       post button disabled)
-- [ ] Resend email alerts
-- [ ] Twilio SMS alerts (Pro tier, 1-2 star reviews)
+- [x] Inngest 15-minute review poller (cron → per-location fan-out → alert fan-out)
+- [x] Resend email alerts for new reviews (immediate for 1-2 stars,
+      digest-pending row for 3-5 stars)
+- [x] Twilio SMS alerts (Growth/Pro tier, 1-2 star reviews only)
+- [x] Settings UI for notification prefs (email/SMS toggles + phone)
 - [ ] QA pass
 
 ## Week 3 — Feels like a real $99/mo SaaS

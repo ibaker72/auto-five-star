@@ -102,6 +102,63 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 5. In the Stripe **Billing Portal** settings, enable cancellation, plan
    changes, payment method updates, and customer-updatable email/address.
 
+### Inngest background jobs
+
+Three functions live under `lib/inngest/functions/`:
+
+- `pull-reviews-cron` — runs every 15 min, finds orgs with a Google
+  connection AND an active/trialing subscription (or an unexpired bootstrap
+  trial), and fans out one `reviews/sync.requested` event per connected
+  Google location.
+- `pull-reviews-for-location` — concurrency limit 5, retries 3. Calls
+  `pullGoogleReviews` and emits one `reviews/new.detected` event per
+  freshly inserted review id.
+- `send-review-alerts` — concurrency 10, retries 2. Calls
+  `processReviewAlert` which records `notifications` rows and dispatches
+  email / SMS per recipient policy.
+
+Local dev:
+
+```bash
+# Terminal 1
+npm run dev
+
+# Terminal 2
+npx inngest-cli@latest dev
+```
+
+The Inngest dev UI at <http://localhost:8288> auto-discovers
+`/api/inngest`. Trigger `pull-reviews-cron` from the UI to run a poll on
+demand, or send a single `reviews/sync.requested` event scoped to one
+location.
+
+### Review alerts
+
+| Rating  | Email                                | SMS                                    |
+| ------- | ------------------------------------ | -------------------------------------- |
+| 1–2 ★   | Immediate (all paid tiers)           | Immediate (Growth/Pro only, opted-in)  |
+| 3 ★     | Queued: `daily_digest_pending`       | Never                                  |
+| 4–5 ★   | Queued: `weekly_digest_pending`      | Never                                  |
+
+Digest jobs themselves land in a later PR; for now the queued rows just
+sit in the `notifications` table waiting for a worker to roll them up.
+
+Email & SMS modes:
+
+- `EMAIL_LIVE=false` (dev) → console-logged fixture, notification row
+  marked `sent` with `_fixture: true` merged into payload.
+- `EMAIL_LIVE=true` → real Resend send.
+- `SMS_LIVE=false` (dev) → console-logged fixture.
+- `SMS_LIVE=false` (production) → notification row marked `skipped` with
+  `errorMessage="sms_disabled"`. Use this while your Twilio A2P 10DLC
+  campaign is still pending.
+- `SMS_LIVE=true` → real Twilio send (requires SID + auth token + from
+  number).
+
+Resend requires a verified sending domain before `EMAIL_LIVE=true` will
+work in production. Twilio requires an approved A2P 10DLC campaign before
+the toll-free or 10DLC number can send to US end-users.
+
 ### OpenAI / AI drafts
 
 The AI draft generator lives in `lib/ai/generate.ts` and uses the prompt at

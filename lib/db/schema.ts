@@ -68,6 +68,7 @@ export const notificationStatusEnum = pgEnum("notification_status", [
   "queued",
   "sent",
   "failed",
+  "skipped",
 ]);
 
 const ts = () => ({
@@ -87,6 +88,9 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   fullName: text("full_name"),
   avatarUrl: text("avatar_url"),
+  notificationPhone: text("notification_phone"),
+  alertsEmailEnabled: boolean("alerts_email_enabled").notNull().default(true),
+  alertsSmsEnabled: boolean("alerts_sms_enabled").notNull().default(false),
   ...ts(),
 });
 

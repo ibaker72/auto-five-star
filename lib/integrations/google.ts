@@ -505,6 +505,8 @@ export type PullReviewsResult = {
   fetched: number;
   inserted: number;
   updated: number;
+  /** IDs of reviews that were freshly inserted on this run. */
+  newReviewIds: string[];
 };
 
 export async function pullGoogleReviews(
@@ -535,6 +537,7 @@ export async function pullGoogleReviews(
 
   let inserted = 0;
   let updated = 0;
+  const newReviewIds: string[] = [];
   for (const r of fetched) {
     const values: NewReview = {
       orgId,
@@ -569,11 +572,18 @@ export async function pullGoogleReviews(
           updatedAt: new Date(),
         },
       })
-      .returning({ inserted: sql<boolean>`(xmax = 0)`.as("inserted") });
+      .returning({
+        id: reviewsTable.id,
+        inserted: sql<boolean>`(xmax = 0)`.as("inserted"),
+      });
     const row = res[0];
     if (!row) continue;
-    if (row.inserted) inserted += 1;
-    else updated += 1;
+    if (row.inserted) {
+      inserted += 1;
+      newReviewIds.push(row.id);
+    } else {
+      updated += 1;
+    }
   }
 
   await writeAudit({
@@ -584,7 +594,13 @@ export async function pullGoogleReviews(
     metadata: { fetched: fetched.length, inserted, updated },
   });
 
-  return { locationId, fetched: fetched.length, inserted, updated };
+  return {
+    locationId,
+    fetched: fetched.length,
+    inserted,
+    updated,
+    newReviewIds,
+  };
 }
 
 /**

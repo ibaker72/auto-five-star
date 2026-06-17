@@ -266,6 +266,8 @@ function ReviewRow({
 }) {
   const stars = "★".repeat(rating) + "☆".repeat(5 - rating);
   const action = quickAction({ status, draftCount, responseStatus });
+  const needsAttention =
+    rating <= 2 && status !== "posted" && responseStatus !== "posted";
 
   return (
     <Link
@@ -282,6 +284,11 @@ function ReviewRow({
           </span>
           <StatusBadge status={status} />
           <SourceBadge source={source} />
+          {needsAttention ? (
+            <span className="rounded bg-rose-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-rose-700">
+              Needs attention
+            </span>
+          ) : null}
           {draftCount > 0 && status !== "posted" ? (
             <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-violet-700">
               {draftCount} drafts
