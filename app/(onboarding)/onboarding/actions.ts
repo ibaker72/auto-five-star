@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { requireOrgContext } from "@/lib/auth/org";
 import { db } from "@/lib/db/client";
 import { organizations, users } from "@/lib/db/schema";
+import { posthog } from "@/lib/posthog";
 import { writeAudit } from "@/lib/audit";
 import {
   isOnboardingStep,
@@ -158,6 +159,13 @@ export async function saveVoiceStep(formData: FormData): Promise<void> {
     current: "voice",
     markComplete: true,
   });
+
+  posthog.capture({
+    distinctId: ctx.user.id,
+    event: "onboarding_completed",
+    properties: { org_id: ctx.org.id },
+  });
+
   revalidatePath("/onboarding");
   revalidatePath("/dashboard");
   revalidatePath("/settings");

@@ -18,6 +18,7 @@ import {
   UnsupportedSourceError,
 } from "@/lib/ai/post-response";
 import { EntitlementError } from "@/lib/billing/entitlements";
+import { posthog } from "@/lib/posthog";
 
 const MAX_BULK = 50;
 
@@ -148,6 +149,19 @@ export async function bulkGenerateDraftsAction(
     },
   });
 
+  posthog.capture({
+    distinctId: ctx.user.id,
+    event: "bulk_drafts_generated",
+    properties: {
+      org_id: ctx.org.id,
+      requested: ownedIds.length,
+      generated,
+      cached,
+      failed,
+      quota_hit: quotaHit,
+    },
+  });
+
   revalidatePath("/inbox");
   revalidatePath("/dashboard");
   if (quotaHit) {
@@ -208,6 +222,18 @@ export async function bulkPostApprovedAction(
     action: "response.posted",
     targetType: "review.bulk",
     metadata: {
+      requested: ownedIds.length,
+      posted,
+      skipped,
+      failed,
+    },
+  });
+
+  posthog.capture({
+    distinctId: ctx.user.id,
+    event: "bulk_responses_posted",
+    properties: {
+      org_id: ctx.org.id,
       requested: ownedIds.length,
       posted,
       skipped,

@@ -14,6 +14,7 @@ import { disconnectGoogle } from "@/lib/integrations/google-tokens";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db/client";
 import { locations as locationsTable } from "@/lib/db/schema";
+import { posthog } from "@/lib/posthog";
 
 function locationsRedirect(params: Record<string, string>): never {
   const qs = new URLSearchParams(params).toString();
@@ -61,6 +62,12 @@ export async function connectLocationAction(
     });
   }
 
+  posthog.capture({
+    distinctId: ctx.user.id,
+    event: "google_location_connected",
+    properties: { org_id: ctx.org.id, location_name: locationName },
+  });
+
   revalidatePath("/locations");
   revalidatePath("/dashboard");
   locationsRedirect({ google: "location_connected" });
@@ -83,6 +90,17 @@ export async function pullReviewsAction(formData: FormData): Promise<void> {
       targetId: locationId,
       metadata: {
         manual: true,
+        fetched: result.fetched,
+        inserted: result.inserted,
+        updated: result.updated,
+      },
+    });
+    posthog.capture({
+      distinctId: ctx.user.id,
+      event: "reviews_pulled",
+      properties: {
+        org_id: ctx.org.id,
+        location_id: locationId,
         fetched: result.fetched,
         inserted: result.inserted,
         updated: result.updated,
@@ -116,6 +134,15 @@ export async function disconnectGoogleAction(
     targetType: "integration",
     targetId: "google",
   });
+
+  if (user?.id) {
+    posthog.capture({
+      distinctId: user.id,
+      event: "google_disconnected",
+      properties: { org_id: ctx.org.id },
+    });
+  }
+
   revalidatePath("/locations");
   locationsRedirect({ google: "disconnected" });
 }

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/auth/supabase-server";
 import { authLimiter } from "@/lib/ratelimit";
+import { posthog } from "@/lib/posthog";
 
 type ActionResult =
   | { ok: true; message?: string; redirectTo?: string }
@@ -58,10 +59,15 @@ export async function loginWithPassword(formData: FormData): Promise<ActionResul
   }
 
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     return { ok: false, error: error.message };
   }
+
+  const userId = signInData.user?.id ?? email;
+  posthog.identify({ distinctId: userId, properties: { email } });
+  posthog.capture({ distinctId: userId, event: "user_logged_in", properties: { method: "password" } });
+
   redirect(next);
 }
 
@@ -92,6 +98,17 @@ export async function signupWithPassword(
     },
   });
   if (error) return { ok: false, error: error.message };
+
+  const userId = data.user?.id ?? email;
+  posthog.identify({
+    distinctId: userId,
+    properties: { email, name: fullName ?? undefined },
+  });
+  posthog.capture({
+    distinctId: userId,
+    event: "user_signed_up",
+    properties: { method: "password", email },
+  });
 
   // If email confirmation is disabled, signUp returns a session immediately.
   if (data.session) {
