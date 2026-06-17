@@ -34,7 +34,11 @@ export default async function AppLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      <AppNav orgName={primary.org.name} userEmail={user.email} />
+      <AppNav
+        orgName={primary.org.name}
+        userEmail={user.email}
+        onboardingIncomplete={!primary.org.onboardingCompletedAt}
+      />
       <div className="container mx-auto px-6 py-8">{children}</div>
     </div>
   );

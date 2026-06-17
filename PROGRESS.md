@@ -26,6 +26,48 @@ Week-by-week MVP tracker.
 - [ ] Deploy to Vercel
 - [ ] Smoke test with real GBP
 
+### PR #7 smoke path (local — onboarding, brand voice, analytics, bulk)
+
+1. Apply the new migration in Supabase:
+   `lib/db/migrations/0003_steady_patch.sql` (adds onboarding tracking
+   columns to `organizations` and brand-voice extension columns to
+   `brand_voices`).
+2. `npm run dev`. Log in as a fresh user (or clear
+   `organizations.onboarding_completed_at` and `onboarding_step` on an
+   existing one).
+3. You land at `/onboarding?step=welcome` automatically (the redirect
+   from `/`). Click **Start setup**.
+4. Business step → set the name and save. Industry step → pick a vertical
+   (the brand voice gets seeded from the pack defaults).
+5. Google step → if not connected, it links to `/locations`. Click
+   **Continue** to proceed even when fixture mode is off — connecting
+   Google is optional during onboarding.
+6. Notifications step → toggle email/SMS, type a phone, save.
+7. Voice step → tweak tone preset, response length, emoji, signature, notes
+   → **Finish setup**. You land on `/dashboard` and the "Finish setup" nav
+   badge disappears.
+8. `/dashboard`:
+   - Stats: Total reviews / Avg rating / Response rate / AI usage.
+   - Second row: Unanswered / This week / This month / Posted.
+   - Two cards: rating distribution (CSS bars) + 8-week trend (CSS bars).
+   - Empty-state cards if there are no reviews yet.
+9. `/settings`:
+   - Onboarding completion row shows the completion date.
+   - Industry pack picker, Brand voice form, Notifications form all save
+     independently.
+10. `/inbox` (still works as before):
+    - New top-left checkbox per row.
+    - Sticky bulk-actions bar with "0 selected" indicator.
+    - On Starter/Growth: bar shows "Bulk actions are Pro-only. Upgrade →"
+      and buttons are disabled.
+    - On Pro: select 2-3 reviews, click **Generate drafts** (uses cached
+      drafts where available), **Post selected** (posts to Google in
+      fixture or live mode), **Mark skipped**, **Export CSV** (downloads a
+      `autofivestar-reviews-YYYY-MM-DD.csv`).
+11. Generate a draft on any review → the new brand voice instructions
+    (tone preset, length, emoji policy, custom notes) flow into the user
+    message. Inspect `audit_logs` for a `draft.generated` row.
+
 ### PR #6 smoke path (local — poller + alerts)
 
 Prereqs: PR #4 (Google connected, location connected) + PR #5 (AI generate
@@ -272,13 +314,13 @@ Unknown event types receive a 200 (Stripe will stop retrying).
 
 ## Week 3 — Feels like a real $99/mo SaaS
 
-- [ ] Onboarding wizard (connect → pick locations → industry → tone → samples)
-- [ ] Brand voice tuning + voice-match score
-- [ ] Analytics dashboard (Recharts)
-- [ ] Competitor snapshot
-- [ ] Industry template packs (HVAC, dental, restaurant, landscaping, moving,
-      auto repair, real estate)
-- [ ] Bulk actions (Pro)
+- [x] Onboarding wizard (welcome → business → industry → Google → notifications → voice → done)
+- [x] Brand voice tuning (tone preset, response length, emoji, signature, custom notes)
+- [x] Analytics dashboard (avg rating, response rate, weekly/monthly counts, rating distribution, 8-week trend)
+- [x] Industry template packs: HVAC, plumbing, roofing, auto dealer, auto repair, dentist, restaurant, gym, cleaning, general
+- [x] Bulk actions for Pro (generate drafts, post selected, mark skipped, CSV export)
+- [ ] Voice-match score / sample upload (deferred — not on critical path)
+- [ ] Competitor snapshot (PR #8)
 
 ## Week 4 — Sales-ready launch
 

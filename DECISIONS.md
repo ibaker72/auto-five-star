@@ -133,6 +133,49 @@ checks use `gte(period_start, currentMonthStart)`.
 
 ---
 
+## 2026-06-16 — Onboarding step stored as text, not enum
+
+**Decision:** `organizations.onboarding_step` is a free-text column whose
+values are validated in code by `lib/onboarding/steps.ts`. Completion is
+tracked by `organizations.onboarding_completed_at` — once non-null the user
+goes straight to `/dashboard` and the nav badge disappears.
+
+**Rationale:** Onboarding flows change shape over time (add steps, reorder,
+A/B test). A Postgres enum bakes the step list into the schema; every
+change needs a migration. Text + code-side guard is the lower-friction
+choice for a step list that's evolving weekly.
+
+---
+
+## 2026-06-16 — Industry packs live as a typed config module
+
+**Decision:** Industry packs are a const map in
+`lib/templates/industry-packs.ts`, not rows in the existing `templates`
+table. The pack id is persisted on `organizations.industry` and on
+`brand_voices.industry_pack`.
+
+**Rationale:** Packs include things the prompt needs at request time
+(response style, caution phrases). Keeping them in code means we can ship
+new packs in a deploy, write tests against them, and avoid a JOIN on every
+AI generation. The existing `templates` table is reserved for user-saved
+snippets, which is a different concept.
+
+---
+
+## 2026-06-16 — Brand voice defaults cascade: voice row → industry pack → safe fallback
+
+**Decision:** `buildBrandVoiceInstructions` picks the org's explicit
+`brand_voices.tone_preset` first, then the industry pack default, then
+falls back silently. Same cascade for response length and emoji policy.
+Custom notes and signature come only from the row (industry packs don't
+include them).
+
+**Rationale:** New users immediately get useful guidance after they pick
+their industry, without having to fill out the full brand-voice form.
+Owners who do fill it out aren't second-guessed.
+
+---
+
 ## 2026-06-16 — Two-hop Inngest fan-out for review polling
 
 **Decision:** The 15-minute cron only emits `reviews/sync.requested` events

@@ -110,6 +110,10 @@ export const organizations = pgTable(
     createdByUserId: uuid("created_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    onboardingStep: text("onboarding_step"),
+    onboardingCompletedAt: timestamp("onboarding_completed_at", {
+      withTimezone: true,
+    }),
     ...ts(),
   },
   (t) => ({
@@ -325,6 +329,11 @@ export const brandVoices = pgTable(
     toneBrevity: integer("tone_brevity").notNull().default(50),
     samples: jsonb("samples").$type<string[]>().default(sql`'[]'::jsonb`),
     voiceSignature: text("voice_signature"),
+    tonePreset: text("tone_preset"),
+    responseLength: text("response_length"),
+    emojiAllowed: boolean("emoji_allowed").notNull().default(false),
+    customNotes: text("custom_notes"),
+    industryPack: text("industry_pack"),
     updatedByUserId: uuid("updated_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
