@@ -26,6 +26,45 @@ Week-by-week MVP tracker.
 - [ ] Deploy to Vercel
 - [ ] Smoke test with real GBP
 
+### PR #8 smoke path (local — marketing site + audit funnel)
+
+1. Apply migration `lib/db/migrations/0004_bent_squadron_sinister.sql` in
+   Supabase, then `lib/db/policies/0004_audit_rls.sql` to lock down the
+   three new tables.
+2. `npm run dev`. Sign out (or open an incognito window).
+3. Visit `/`, `/features`, `/pricing`, `/contact` — pages render with the
+   marketing header / footer, no auth gate.
+4. `/free-audit`:
+   - Fill in business name + email (others optional) → submit.
+   - The form POSTs to `/api/audit`. With `EMAIL_LIVE=false` you'll see
+     `[email/fixture]` lines in the server log for the prospect email and
+     the sales-lead email.
+   - Browser is pushed to `/free-audit/results/{request_id}`.
+5. Verify in DB:
+   - `audit_leads` has the new row.
+   - `audit_requests` has `status=completed`, `demo_mode=true`, `score`
+     populated, `report_json` contains the report + inputs + rationale.
+   - `funnel_events` has `audit_started` + `audit_completed` +
+     `audit_email_sent` rows for this session.
+6. Results page:
+   - Score header with grade pill and breakdown bars.
+   - "Demo data" alert at the top with the rationale.
+   - Strengths / opportunities / recommendations cards.
+   - Three tracked CTAs: **Start Free Trial**, **Book Demo**, **Contact
+     Sales**. Clicking each records the matching funnel event (use
+     `select * from funnel_events order by created_at desc limit 10;` to
+     confirm) and navigates.
+7. Rate limiting:
+   - Re-submit the same email 6 times within an hour → 6th request
+     returns 429 with the "Too many audits…" message.
+   - 11 audit requests from the same IP within an hour → upstream IP
+     limiter fires (when Upstash is configured).
+8. SEO:
+   - `view-source:/pricing` → has `<script type="application/ld+json">`
+     with the FAQ schema.
+   - All pages have OpenGraph + Twitter + canonical tags.
+   - `/free-audit/results/[id]` has `robots: noindex, nofollow`.
+
 ### PR #7 smoke path (local — onboarding, brand voice, analytics, bulk)
 
 1. Apply the new migration in Supabase:
@@ -324,10 +363,14 @@ Unknown event types receive a 200 (Stripe will stop retrying).
 
 ## Week 4 — Sales-ready launch
 
-- [ ] Public landing page (autofivestar.com)
-- [ ] Pricing + FAQ + demo video area
-- [ ] Free Reputation Audit tool (PDF, email-gated)
-- [ ] Referral system
-- [ ] CSV import for past clients
-- [ ] Outreach emails using unanswered review count
-- [ ] Launch checklist
+- [x] Public marketing site (autofivestar.com): /, /features, /pricing, /contact
+- [x] Pricing page with FAQ + FAQPage schema
+- [x] Free Reputation Audit tool (email-gated, demo-mode by default)
+- [x] Funnel event tracking (audit_started, audit_completed, trial_clicked,
+      demo_clicked, contact_clicked, audit_email_sent, etc.)
+- [x] SEO: per-page metadata + OpenGraph + Twitter + canonical + FAQ schema
+- [ ] PDF download (deferred — emailed HTML report covers the goal)
+- [ ] Referral system (PR #9 candidate)
+- [ ] CSV import for past Tweak & Build clients (PR #9 candidate)
+- [ ] Outreach emails using unanswered review count (PR #9 candidate)
+- [ ] Launch checklist (final PR)

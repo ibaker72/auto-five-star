@@ -102,6 +102,56 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 5. In the Stripe **Billing Portal** settings, enable cancellation, plan
    changes, payment method updates, and customer-updatable email/address.
 
+### Public marketing site
+
+Lives under `app/(marketing)/`:
+
+- `/` — hero, problem, solution cards, how-it-works, pricing preview, CTA
+- `/features` — detailed feature breakdown
+- `/pricing` — three plans, FAQ, embedded FAQPage schema
+- `/free-audit` — lead capture + reputation audit funnel
+- `/free-audit/results/[id]` — per-lead audit results, noindex
+- `/contact` — email-led contact page with topic-aware subject lines
+
+Marketing pages are server-rendered, mobile-first, and lean — `/features`
+and `/pricing` build as static. Per-page metadata + OpenGraph + Twitter +
+canonical tags. FAQPage JSON-LD on `/pricing`.
+
+### Free Reputation Audit funnel
+
+Flow:
+
+1. Prospect submits the form on `/free-audit` (business + email required).
+2. `POST /api/audit` validates input, rate-limits (10/hour/IP via Upstash,
+   5/hour/email at the DB layer), then calls `createAudit` which writes
+   `audit_leads` + `audit_requests` rows.
+3. `lib/audit/score.ts` `computeReputationReport` produces a deterministic
+   0-100 score plus strengths / opportunities / recommendations from four
+   weighted dimensions: rating (40), volume (20), recency (20), response
+   rate (20).
+4. Because we have no live review data for a non-customer, the inputs come
+   from `buildDemoInputs(seed)` — a stable FNV-1a hash of business + email
+   + request id — and the request is flagged `demo_mode = true`.
+5. Two emails are sent through Resend (`EMAIL_LIVE=false` → fixture):
+   - To the prospect: branded HTML report + link to results.
+   - To `SUPPORT_EMAIL`: internal sales lead notification.
+6. Browser is pushed to `/free-audit/results/[request_id]`. The page shows
+   the score, breakdown, strengths, opportunities, and a punch list with
+   three tracked CTAs (Start Free Trial / Book Demo / Contact Sales).
+
+### Funnel events
+
+`lib/analytics/funnel.ts` exposes a typed event recorder. Allowed event
+types: `audit_started`, `audit_completed`, `audit_email_sent`,
+`audit_email_failed`, `trial_clicked`, `demo_clicked`, `contact_clicked`,
+`pricing_viewed`, `features_viewed`. Rows are written to `funnel_events`
+with optional `audit_lead_id` / `audit_request_id` / `session_id`.
+
+Client clicks fire `/api/funnel/event` via `navigator.sendBeacon` before
+navigation. The endpoint validates against the whitelist and silently
+drops anything else. A first-visit session id is stored in
+`localStorage` under `afv_session_id`.
+
 ### Onboarding wizard
 
 New users land in a 6-step wizard at `/onboarding`:

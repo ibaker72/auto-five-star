@@ -29,6 +29,13 @@
       "when": 1781660251525,
       "tag": "0003_steady_patch",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781711250545,
+      "tag": "0004_bent_squadron_sinister",
+      "breakpoints": true
     }
   ]
 }

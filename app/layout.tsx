@@ -3,14 +3,17 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "AutoFiveStar — AI review replies for local businesses",
+    default: "AutoFiveStar — Never miss a bad review again",
     template: "%s · AutoFiveStar",
   },
   description:
-    "AutoFiveStar uses AI to draft professional, on-brand replies to your Google reviews so you can approve and post in seconds.",
+    "Get instant review alerts, AI-powered responses, analytics, and reputation monitoring for your business. Start your free reputation audit.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://autofivestar.com",
   ),
+  openGraph: {
+    siteName: "AutoFiveStar",
+  },
 };
 
 export default function RootLayout({

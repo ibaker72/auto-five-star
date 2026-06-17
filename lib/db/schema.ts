@@ -507,6 +507,99 @@ export const competitorSnapshots = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// audit_leads — pre-customer leads from the free-audit funnel
+// ---------------------------------------------------------------------------
+export const auditLeads = pgTable(
+  "audit_leads",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessName: text("business_name").notNull(),
+    email: text("email").notNull(),
+    website: text("website"),
+    gbpUrl: text("gbp_url"),
+    industry: text("industry"),
+    source: text("source"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    emailIdx: index("audit_leads_email_idx").on(t.email),
+    createdAtIdx: index("audit_leads_created_at_idx").on(t.createdAt),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// audit_requests — one row per generated audit
+// ---------------------------------------------------------------------------
+export const auditRequests = pgTable(
+  "audit_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    auditLeadId: uuid("audit_lead_id")
+      .notNull()
+      .references(() => auditLeads.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    score: integer("score"),
+    reportJson: jsonb("report_json").$type<Record<string, unknown>>(),
+    demoMode: boolean("demo_mode").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    leadIdx: index("audit_requests_lead_idx").on(t.auditLeadId),
+    createdAtIdx: index("audit_requests_created_at_idx").on(t.createdAt),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// funnel_events — public marketing funnel tracking
+// ---------------------------------------------------------------------------
+export const funnelEvents = pgTable(
+  "funnel_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    eventType: text("event_type").notNull(),
+    auditLeadId: uuid("audit_lead_id").references(() => auditLeads.id, {
+      onDelete: "set null",
+    }),
+    auditRequestId: uuid("audit_request_id").references(
+      () => auditRequests.id,
+      { onDelete: "set null" },
+    ),
+    sessionId: text("session_id"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    typeCreatedIdx: index("funnel_events_type_created_idx").on(
+      t.eventType,
+      t.createdAt,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Type exports
+// ---------------------------------------------------------------------------
+export type AuditLead = typeof auditLeads.$inferSelect;
+export type NewAuditLead = typeof auditLeads.$inferInsert;
+export type AuditRequest = typeof auditRequests.$inferSelect;
+export type NewAuditRequest = typeof auditRequests.$inferInsert;
+export type FunnelEvent = typeof funnelEvents.$inferSelect;
+
+// ---------------------------------------------------------------------------
 // Type exports
 // ---------------------------------------------------------------------------
 export type User = typeof users.$inferSelect;

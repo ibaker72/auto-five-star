@@ -3,12 +3,18 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = [
   "/",
+  "/features",
+  "/pricing",
+  "/free-audit",
+  "/contact",
   "/login",
   "/signup",
   "/forgot-password",
   "/auth/callback",
   "/api/stripe/webhook",
   "/api/inngest",
+  "/api/audit",
+  "/api/funnel",
 ];
 
 function isPublic(pathname: string): boolean {
