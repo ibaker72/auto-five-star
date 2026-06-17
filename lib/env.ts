@@ -9,8 +9,14 @@ const serverSchema = z.object({
   SUPABASE_PROJECT_REF: z.string().min(1).optional(),
 
   // DB
-  DATABASE_URL: z.string().url(),
+  // At least one runtime URL var must be set; resolution priority is defined
+  // in lib/db/url.ts. The Vercel/Supabase integration auto-populates the
+  // POSTGRES_* family, so we accept any of them here.
+  DATABASE_URL: z.string().url().optional(),
   DIRECT_URL: z.string().url().optional(),
+  POSTGRES_URL: z.string().url().optional(),
+  POSTGRES_PRISMA_URL: z.string().url().optional(),
+  POSTGRES_URL_NON_POOLING: z.string().url().optional(),
   NEON_PROJECT_ID: z.string().min(1).optional(),
 
   // Encryption (64-char hex == 32 bytes)
@@ -79,6 +85,22 @@ const serverSchema = z.object({
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
+}).superRefine((env, ctx) => {
+  const hasAnyDbUrl =
+    !!env.DATABASE_URL ||
+    !!env.POSTGRES_PRISMA_URL ||
+    !!env.POSTGRES_URL ||
+    !!env.DIRECT_URL ||
+    !!env.POSTGRES_URL_NON_POOLING;
+  if (!hasAnyDbUrl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["DATABASE_URL"],
+      message:
+        "Set DATABASE_URL, POSTGRES_PRISMA_URL, or POSTGRES_URL " +
+        "(Vercel/Supabase integration provides the POSTGRES_* family).",
+    });
+  }
 });
 
 const clientSchema = z.object({

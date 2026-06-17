@@ -1,8 +1,63 @@
+/**
+ * Database URL resolution.
+ *
+ * Selection order (runtime / pooler-preferred):
+ *   1. DATABASE_URL                       (preferred; pooler URL in production)
+ *   2. POSTGRES_PRISMA_URL                (Vercel/Supabase integration)
+ *   3. POSTGRES_URL                       (Vercel/Supabase integration)
+ *   4. DIRECT_URL                         (last-resort fallback)
+ *   5. POSTGRES_URL_NON_POOLING           (last-resort fallback)
+ *
+ * Selection order (preferDirect — migrations only):
+ *   1. DIRECT_URL
+ *   2. POSTGRES_URL_NON_POOLING
+ *   3. DATABASE_URL
+ *   4. POSTGRES_PRISMA_URL
+ *   5. POSTGRES_URL
+ *
+ * The runtime client must not accidentally use a direct connection unless
+ * none of the pooler-style vars are set. Migrations must not run through
+ * the pooler unless no direct URL is available.
+ *
+ * On first resolution we log a redacted summary (host, host class, source
+ * env var, and a username pattern) so a misconfigured URL can be spotted in
+ * Vercel runtime logs without leaking credentials.
+ */
 type ResolveDatabaseUrlOptions = {
   preferDirect?: boolean;
 };
 
+const RUNTIME_URL_CANDIDATES = [
+  "DATABASE_URL",
+  "POSTGRES_PRISMA_URL",
+  "POSTGRES_URL",
+  "DIRECT_URL",
+  "POSTGRES_URL_NON_POOLING",
+] as const;
+
+const DIRECT_URL_CANDIDATES = [
+  "DIRECT_URL",
+  "POSTGRES_URL_NON_POOLING",
+  "DATABASE_URL",
+  "POSTGRES_PRISMA_URL",
+  "POSTGRES_URL",
+] as const;
+
+type EnvCandidate =
+  | (typeof RUNTIME_URL_CANDIDATES)[number]
+  | (typeof DIRECT_URL_CANDIDATES)[number];
+
 const hasIpLikeHost = (host: string) => /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+
+function pickEnvUrl(
+  candidates: readonly EnvCandidate[],
+): { source: EnvCandidate; raw: string } | null {
+  for (const name of candidates) {
+    const value = process.env[name]?.trim();
+    if (value) return { source: name, raw: value };
+  }
+  return null;
+}
 
 function deriveSupabaseProjectRef(): string | null {
   const explicit = process.env.SUPABASE_PROJECT_REF?.trim();
@@ -74,14 +129,118 @@ function withNeonTenantIdentifier(url: string): string {
   return url;
 }
 
-export function resolveDatabaseUrl(options: ResolveDatabaseUrlOptions = {}): string {
-  const raw = options.preferDirect
-    ? process.env.DIRECT_URL ?? process.env.DATABASE_URL
-    : process.env.DATABASE_URL ?? process.env.DIRECT_URL;
+type HostClass =
+  | "supabase-pooler"
+  | "supabase-direct"
+  | "neon"
+  | "ip-literal"
+  | "other";
 
-  if (!raw) {
-    throw new Error("DATABASE_URL or DIRECT_URL must be set");
+function classifyHost(host: string): HostClass {
+  const h = host.toLowerCase();
+  if (h.endsWith(".pooler.supabase.com")) return "supabase-pooler";
+  if (h.endsWith(".supabase.co")) return "supabase-direct";
+  if (h.endsWith(".neon.tech") || h.endsWith(".neon.build") || h.endsWith(".neon.dev")) return "neon";
+  if (hasIpLikeHost(h)) return "ip-literal";
+  return "other";
+}
+
+function redactedUsernamePattern(username: string): string {
+  if (!username) return "<empty>";
+  const [head] = username.split(".");
+  if (!head) return "<empty>";
+  return username.includes(".") ? `${head}.<ref>` : head;
+}
+
+const RESOLUTION_LOG_KEY = Symbol.for("autofivestar.db.resolution-logged");
+
+type ResolutionLogState = { runtime?: boolean; direct?: boolean };
+
+function logResolution(
+  kind: "runtime" | "direct",
+  info: { source: EnvCandidate; resolved: string },
+): void {
+  if (process.env.SKIP_DB_RESOLUTION_LOG === "true") return;
+
+  const store = globalThis as Record<symbol, ResolutionLogState | undefined>;
+  const state = (store[RESOLUTION_LOG_KEY] ??= {}) as ResolutionLogState;
+  if (state[kind]) return;
+  state[kind] = true;
+
+  let host = "<unparsable>";
+  let port = "<default>";
+  let hostClass: HostClass = "other";
+  let usernamePattern = "<unknown>";
+  let sslmode = "<unspecified>";
+
+  try {
+    const parsed = new URL(info.resolved);
+    host = parsed.hostname;
+    port = parsed.port || "<default>";
+    hostClass = classifyHost(host);
+    usernamePattern = redactedUsernamePattern(decodeURIComponent(parsed.username));
+    sslmode = parsed.searchParams.get("sslmode") ?? "<unspecified>";
+  } catch {
+    /* fall through with defaults */
   }
 
-  return withNeonTenantIdentifier(withSupabasePoolerTenantIdentifier(raw));
+  console.log(
+    `[db] ${kind} URL resolved | source=${info.source} ` +
+      `host=${host} port=${port} class=${hostClass} ` +
+      `user=${usernamePattern} sslmode=${sslmode}`,
+  );
+}
+
+export function resolveDatabaseUrl(options: ResolveDatabaseUrlOptions = {}): string {
+  const kind: "runtime" | "direct" = options.preferDirect ? "direct" : "runtime";
+  const candidates = options.preferDirect ? DIRECT_URL_CANDIDATES : RUNTIME_URL_CANDIDATES;
+  const picked = pickEnvUrl(candidates);
+
+  if (!picked) {
+    throw new Error(
+      `No database URL found for ${kind} client. Set one of: ${candidates.join(", ")}.`,
+    );
+  }
+
+  const resolved = withNeonTenantIdentifier(
+    withSupabasePoolerTenantIdentifier(picked.raw),
+  );
+
+  logResolution(kind, { source: picked.source, resolved });
+
+  return resolved;
+}
+
+/**
+ * Exported for diagnostics/tests. Returns the source env var name and the
+ * fully transformed URL, without logging. Do not pass the resolved URL to
+ * logs or error messages — it still contains the password.
+ */
+export function describeDatabaseUrlForDiagnostics(
+  options: ResolveDatabaseUrlOptions = {},
+): {
+  source: EnvCandidate;
+  host: string;
+  port: string;
+  hostClass: HostClass;
+  usernamePattern: string;
+} | null {
+  const candidates = options.preferDirect ? DIRECT_URL_CANDIDATES : RUNTIME_URL_CANDIDATES;
+  const picked = pickEnvUrl(candidates);
+  if (!picked) return null;
+  const resolved = withNeonTenantIdentifier(
+    withSupabasePoolerTenantIdentifier(picked.raw),
+  );
+  try {
+    const parsed = new URL(resolved);
+    return {
+      source: picked.source,
+      host: parsed.hostname,
+      port: parsed.port || "<default>",
+      hostClass: classifyHost(parsed.hostname),
+      usernamePattern: redactedUsernamePattern(decodeURIComponent(parsed.username)),
+    };
+  } catch {
+    return null;
+  }
 }
