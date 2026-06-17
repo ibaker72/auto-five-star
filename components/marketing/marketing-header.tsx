@@ -11,11 +11,17 @@ const LINKS = [
 export function MarketingHeader() {
   return (
     <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-30">
-      <div className="container mx-auto flex h-14 items-center justify-between gap-6 px-6">
-        <Link href="/" className="text-base font-bold tracking-tight">
+      <div className="container mx-auto flex h-14 items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
+        <Link
+          href="/"
+          className="shrink-0 text-base font-bold tracking-tight"
+        >
           AutoFiveStar
         </Link>
-        <nav className="hidden items-center gap-1 md:flex">
+        <nav
+          aria-label="Primary"
+          className="hidden flex-wrap items-center gap-1 md:flex"
+        >
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -26,7 +32,7 @@ export function MarketingHeader() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <Button asChild variant="ghost" size="sm">
             <Link href="/login">Log in</Link>
           </Button>
