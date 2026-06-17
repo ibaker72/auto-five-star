@@ -12,8 +12,6 @@ Sentry.init({
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
   tracesSampleRate: 1,
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
 
   // Define how likely Replay events are sampled.
   // This sets the sample rate to be 10%. You may want this to be 100% while
@@ -27,5 +25,6 @@ Sentry.init({
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
 });
-
-export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
+// NOTE: enableLogs and Sentry.captureRouterTransitionStart are v10-only;
+// re-enable once package.json's @sentry/nextjs version is actually
+// installed (currently 8.55.2 vs. declared 10.58.0).
