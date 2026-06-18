@@ -26,7 +26,9 @@ export default function ContactPage({
             ? "Book a demo"
             : topic === "sales"
               ? "Talk to sales"
-              : "Talk to us"}
+              : topic === "agency"
+                ? "For agencies"
+                : "Talk to us"}
         </h1>
         <p className="mx-auto mt-4 max-w-xl text-muted-foreground">
           The fastest way to reach us is email. We answer within one business
@@ -49,7 +51,9 @@ export default function ContactPage({
                   ? "Demo request"
                   : topic === "sales"
                     ? "Sales question"
-                    : "AutoFiveStar question",
+                    : topic === "agency"
+                      ? "Agency / white-label inquiry"
+                      : "AutoFiveStar question",
               )}`}
               className="text-base font-medium text-primary underline"
             >
