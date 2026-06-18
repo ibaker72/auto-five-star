@@ -24,7 +24,7 @@ function isPublic(pathname: string): boolean {
 
 function hasSupabaseSessionCookie(request: NextRequest): boolean {
   // Supabase stores session fragments as sb-<project-ref>-auth-token(.N)
-  // cookies. Presence is enough for middleware-level gating; server code still
+  // cookies. Presence is enough for proxy-level gating; server code still
   // validates the session with Supabase for protected actions.
   const cookies = request.cookies.getAll();
   return cookies.some(({ name, value }) => {
@@ -34,7 +34,7 @@ function hasSupabaseSessionCookie(request: NextRequest): boolean {
   });
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next({ request: { headers: request.headers } });
 
   const { pathname } = request.nextUrl;

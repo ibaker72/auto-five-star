@@ -18,8 +18,8 @@ function absoluteCallbackUrl(next?: string): string {
   return url.toString();
 }
 
-function clientIp(): string {
-  const h = headers();
+async function clientIp(): Promise<string> {
+  const h = await headers();
   return (
     h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     h.get("x-real-ip") ??
@@ -29,7 +29,7 @@ function clientIp(): string {
 
 async function checkAuthRateLimit(): Promise<ActionResult | null> {
   try {
-    const ip = clientIp();
+    const ip = await clientIp();
     const { success } = await authLimiter.limit(ip);
     if (!success) {
       return {
@@ -58,7 +58,7 @@ export async function loginWithPassword(formData: FormData): Promise<ActionResul
     return { ok: false, error: "Email and password are required." };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: signInData, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     return { ok: false, error: error.message };
@@ -88,7 +88,7 @@ export async function signupWithPassword(
     };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -122,7 +122,7 @@ export async function signupWithPassword(
 
 export async function loginWithGoogle(formData: FormData): Promise<ActionResult> {
   const next = String(formData.get("next") ?? "/dashboard");
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -137,7 +137,7 @@ export async function loginWithGoogle(formData: FormData): Promise<ActionResult>
 }
 
 export async function logout(): Promise<void> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect("/login");
 }

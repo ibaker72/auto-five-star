@@ -11,8 +11,9 @@ export const runtime = "nodejs";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
+  const { id } = await params;
   let ctx;
   try {
     ctx = await requireOrgContext();
@@ -35,7 +36,7 @@ export async function POST(
     const result = await generateDraftsForReview({
       orgId: ctx.org.id,
       userId: ctx.user.id,
-      reviewId: params.id,
+      reviewId: id,
       force,
     });
     return NextResponse.json({

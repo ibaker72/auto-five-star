@@ -28,8 +28,8 @@ function buildIpLimiter(): Ratelimit | null {
   }
 }
 
-function clientIp(): string {
-  const h = headers();
+async function clientIp(): Promise<string> {
+  const h = await headers();
   return (
     h.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     h.get("x-real-ip") ??
@@ -74,7 +74,7 @@ async function readPayload(request: NextRequest): Promise<RequestPayload> {
 export async function POST(request: NextRequest) {
   const limiter = buildIpLimiter();
   if (limiter) {
-    const { success } = await limiter.limit(clientIp());
+    const { success } = await limiter.limit(await clientIp());
     if (!success) {
       return NextResponse.json(
         { error: "Too many audit requests. Try again later." },

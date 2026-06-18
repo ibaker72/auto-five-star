@@ -25,6 +25,5 @@ Sentry.init({
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
 });
-// NOTE: enableLogs and Sentry.captureRouterTransitionStart are v10-only;
-// re-enable once package.json's @sentry/nextjs version is actually
-// installed (currently 8.55.2 vs. declared 10.58.0).
+
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
