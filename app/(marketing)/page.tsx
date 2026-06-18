@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandGlow } from "@/components/ui/brand-glow";
@@ -8,9 +7,6 @@ import { AnimatedStars } from "@/components/ui/animated-stars";
 import { DemoPanels } from "@/components/marketing/demo-panels";
 import { centsToUsd } from "@/lib/utils";
 import { PLAN_CONFIG, PLANS } from "@/lib/billing/plans";
-import { getCurrentUser } from "@/lib/auth/supabase-server";
-
-export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Never Miss a Bad Review Again",
@@ -33,10 +29,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "https://autofivestar.com/" },
 };
 
-export default async function HomePage() {
-  const user = await getCurrentUser();
-  if (user) redirect("/dashboard");
-
+export default function HomePage() {
   return (
     <>
       <Hero />
