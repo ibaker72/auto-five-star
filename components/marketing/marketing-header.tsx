@@ -10,11 +10,11 @@ const LINKS = [
 
 export function MarketingHeader() {
   return (
-    <header className="border-b bg-background/95 backdrop-blur sticky top-0 z-30">
+    <header className="sticky top-0 z-30 border-b bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="container mx-auto flex h-14 items-center justify-between gap-3 px-4 sm:gap-6 sm:px-6">
         <Link
           href="/"
-          className="shrink-0 text-base font-bold tracking-tight"
+          className="shrink-0 text-base font-bold tracking-tight text-brand-gradient"
         >
           AutoFiveStar
         </Link>
@@ -26,7 +26,7 @@ export function MarketingHeader() {
             <Link
               key={l.href}
               href={l.href}
-              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               {l.label}
             </Link>
@@ -36,7 +36,7 @@ export function MarketingHeader() {
           <Button asChild variant="ghost" size="sm">
             <Link href="/login">Log in</Link>
           </Button>
-          <Button asChild size="sm">
+          <Button asChild size="sm" variant="brand">
             <Link href="/free-audit">Start Free Audit</Link>
           </Button>
         </div>

@@ -507,6 +507,117 @@ export const competitorSnapshots = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// review_request_campaigns — outbound review-request batches
+// ---------------------------------------------------------------------------
+export const reviewRequestCampaigns = pgTable(
+  "review_request_campaigns",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    locationId: uuid("location_id").references(() => locations.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    /** "email" | "sms" | "both" */
+    channel: text("channel").notNull(),
+    /** "draft" | "queued" | "sending" | "sent" | "failed" | "completed" */
+    status: text("status").notNull().default("draft"),
+    messageTemplate: text("message_template").notNull(),
+    googleReviewUrl: text("google_review_url"),
+    createdByUserId: uuid("created_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    ...ts(),
+  },
+  (t) => ({
+    orgIdx: index("review_request_campaigns_org_idx").on(t.orgId),
+    statusIdx: index("review_request_campaigns_status_idx").on(t.status),
+    createdAtIdx: index("review_request_campaigns_created_at_idx").on(
+      t.createdAt,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// review_request_recipients — one row per customer per campaign
+// ---------------------------------------------------------------------------
+export const reviewRequestRecipients = pgTable(
+  "review_request_recipients",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => reviewRequestCampaigns.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    customerName: text("customer_name").notNull(),
+    customerEmail: text("customer_email"),
+    customerPhone: text("customer_phone"),
+    /** "pending" | "sent" | "skipped" | "failed" | "clicked" | "reviewed" */
+    status: text("status").notNull().default("pending"),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    clickedAt: timestamp("clicked_at", { withTimezone: true }),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    campaignIdx: index("review_request_recipients_campaign_idx").on(
+      t.campaignId,
+    ),
+    orgIdx: index("review_request_recipients_org_idx").on(t.orgId),
+    statusIdx: index("review_request_recipients_status_idx").on(t.status),
+    createdAtIdx: index("review_request_recipients_created_at_idx").on(
+      t.createdAt,
+    ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// review_request_events — append-only event log for analytics
+// ---------------------------------------------------------------------------
+export const reviewRequestEvents = pgTable(
+  "review_request_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    campaignId: uuid("campaign_id").references(
+      () => reviewRequestCampaigns.id,
+      { onDelete: "set null" },
+    ),
+    recipientId: uuid("recipient_id").references(
+      () => reviewRequestRecipients.id,
+      { onDelete: "set null" },
+    ),
+    /** e.g. "request.queued", "request.sent", "request.skipped",
+     *  "request.failed", "request.clicked", "request.reviewed",
+     *  "qr.generated", "campaign.created" */
+    eventName: text("event_name").notNull(),
+    payload: jsonb("payload")
+      .$type<Record<string, unknown>>()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => ({
+    orgIdx: index("review_request_events_org_idx").on(t.orgId),
+    campaignIdx: index("review_request_events_campaign_idx").on(t.campaignId),
+    createdAtIdx: index("review_request_events_created_at_idx").on(
+      t.createdAt,
+    ),
+    eventNameIdx: index("review_request_events_event_idx").on(t.eventName),
+  }),
+);
+
+// ---------------------------------------------------------------------------
 // audit_leads — pre-customer leads from the free-audit funnel
 // ---------------------------------------------------------------------------
 export const auditLeads = pgTable(
@@ -598,6 +709,15 @@ export type NewAuditLead = typeof auditLeads.$inferInsert;
 export type AuditRequest = typeof auditRequests.$inferSelect;
 export type NewAuditRequest = typeof auditRequests.$inferInsert;
 export type FunnelEvent = typeof funnelEvents.$inferSelect;
+export type ReviewRequestCampaign = typeof reviewRequestCampaigns.$inferSelect;
+export type NewReviewRequestCampaign =
+  typeof reviewRequestCampaigns.$inferInsert;
+export type ReviewRequestRecipient =
+  typeof reviewRequestRecipients.$inferSelect;
+export type NewReviewRequestRecipient =
+  typeof reviewRequestRecipients.$inferInsert;
+export type ReviewRequestEvent = typeof reviewRequestEvents.$inferSelect;
+export type NewReviewRequestEvent = typeof reviewRequestEvents.$inferInsert;
 
 // ---------------------------------------------------------------------------
 // Type exports

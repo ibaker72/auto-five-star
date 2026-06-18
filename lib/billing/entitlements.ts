@@ -13,7 +13,9 @@ export type Entitlement =
   | "yelp.read"
   | "alerts.sms"
   | "actions.bulk"
-  | "locations.connect";
+  | "locations.connect"
+  | "review_requests.sms"
+  | "review_requests.csv";
 
 export type PlanLimits = {
   plan: Plan;
@@ -147,6 +149,30 @@ export async function canUseBulkActions(
     : { ok: false, reason: "Bulk actions require Pro." };
 }
 
+export async function canSendSmsReviewRequests(
+  orgId: string,
+): Promise<EntitlementCheck> {
+  const plan = await getOrgPlan(orgId);
+  return plan === "growth" || plan === "pro"
+    ? { ok: true }
+    : {
+        ok: false,
+        reason: "SMS review requests require Growth or Pro.",
+      };
+}
+
+export async function canImportCsvReviewRequests(
+  orgId: string,
+): Promise<EntitlementCheck> {
+  const plan = await getOrgPlan(orgId);
+  return plan === "growth" || plan === "pro"
+    ? { ok: true }
+    : {
+        ok: false,
+        reason: "CSV import is available on Growth and Pro.",
+      };
+}
+
 export class EntitlementError extends Error {
   constructor(
     message: string,
@@ -167,6 +193,8 @@ const CHECKERS: Record<
   "alerts.sms": canUseSmsAlerts,
   "actions.bulk": canUseBulkActions,
   "locations.connect": canConnectLocation,
+  "review_requests.sms": canSendSmsReviewRequests,
+  "review_requests.csv": canImportCsvReviewRequests,
 };
 
 export async function requireEntitlement(

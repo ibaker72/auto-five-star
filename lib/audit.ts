@@ -23,7 +23,11 @@ export type AuditAction =
   | "response.posted"
   | "response.failed"
   | "review.skipped"
-  | "review.flagged";
+  | "review.flagged"
+  | "review_request.sent"
+  | "review_request.failed"
+  | "review_request.campaign.created"
+  | "review_request.qr.generated";
 
 export async function writeAudit(params: {
   orgId: string;

@@ -2,15 +2,15 @@ import Link from "next/link";
 
 export function MarketingFooter() {
   return (
-    <footer className="mt-16 border-t">
-      <div className="container mx-auto grid gap-8 px-6 py-10 text-sm text-muted-foreground sm:grid-cols-2 md:grid-cols-4">
+    <footer className="mt-16 border-t bg-gradient-to-b from-background to-secondary/30">
+      <div className="container mx-auto grid gap-8 px-6 py-12 text-sm text-muted-foreground sm:grid-cols-2 md:grid-cols-4">
         <div>
           <p className="text-sm font-bold tracking-tight text-foreground">
             AutoFiveStar
           </p>
           <p className="mt-2 max-w-xs">
-            AI review replies for local businesses. Never leave a Google review
-            unanswered.
+            AI review replies and review-request automation for local
+            businesses. Never leave a Google review unanswered.
           </p>
         </div>
         <div>
@@ -67,12 +67,23 @@ export function MarketingFooter() {
           </ul>
         </div>
       </div>
-      <div className="border-t">
+      <div className="border-t bg-background">
         <div className="container mx-auto flex flex-wrap items-center justify-between gap-3 px-6 py-4 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} AutoFiveStar.</p>
           <p>
-            We help local businesses respond to reviews professionally. We do
-            not guarantee ratings, rankings, or revenue.
+            © {new Date().getFullYear()} AutoFiveStar. Powered by{" "}
+            <a
+              href="https://www.tweakandbuild.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-foreground/80 underline-offset-2 hover:text-primary hover:underline"
+            >
+              Tweak &amp; Build
+            </a>
+            .
+          </p>
+          <p className="max-w-md text-right">
+            We help local businesses respond to and request reviews
+            professionally. We do not guarantee ratings, rankings, or revenue.
           </p>
         </div>
       </div>

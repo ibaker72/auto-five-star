@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BrandGlow } from "@/components/ui/brand-glow";
 
 export const metadata: Metadata = {
   title: "Features",
@@ -54,6 +55,15 @@ const FEATURES = [
     ],
   },
   {
+    title: "Review request engine",
+    body: "Send single review requests by email/SMS, bulk via CSV, or print a QR code for in-person customers.",
+    bullets: [
+      "Industry-tuned templates (no incentives, no gating)",
+      "CSV import with row-level validation (Growth)",
+      "Printable QR with download as PNG / SVG",
+    ],
+  },
+  {
     title: "Bulk actions (Pro)",
     body: "Operate at agency scale: bulk generate drafts, post selected, export CSV.",
     bullets: [
@@ -76,28 +86,32 @@ const FEATURES = [
 export default function FeaturesPage() {
   return (
     <>
-      <section className="container mx-auto px-6 pt-16 pb-10 text-center md:pt-24">
-        <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
-          Built for owners who don't have time to babysit a dashboard
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-balance text-muted-foreground">
-          AutoFiveStar handles the review loop end-to-end: alert, draft,
-          approve, post, repeat.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild>
-            <Link href="/free-audit">Start Free Audit</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/signup">Start 14-day trial</Link>
-          </Button>
+      <section className="relative isolate overflow-hidden">
+        <BrandGlow intensity="subtle" />
+        <div className="container relative mx-auto px-6 pt-20 pb-10 text-center md:pt-28">
+          <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
+            <span className="text-brand-gradient">Built for owners</span> who
+            don&apos;t have time to babysit a dashboard
+          </h1>
+          <p className="mx-auto mt-4 max-w-2xl text-balance text-muted-foreground">
+            AutoFiveStar handles the review loop end-to-end: alert, draft,
+            approve, post, request — repeat.
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Button asChild variant="brand">
+              <Link href="/free-audit">Start Free Audit</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/signup">Start 14-day trial</Link>
+            </Button>
+          </div>
         </div>
       </section>
 
-      <section className="container mx-auto px-6 pb-16">
+      <section className="container mx-auto px-6 pb-20">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map((f) => (
-            <Card key={f.title}>
+            <Card key={f.title} className="hover-lift">
               <CardHeader>
                 <CardTitle className="text-lg">{f.title}</CardTitle>
                 <CardDescription>{f.body}</CardDescription>

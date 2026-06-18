@@ -48,11 +48,27 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        brand: {
+          navy: "hsl(var(--brand-navy))",
+          electric: "hsl(var(--brand-electric))",
+          cyan: "hsl(var(--brand-cyan))",
+          amber: "hsl(var(--brand-amber))",
+          success: "hsl(var(--brand-success))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+      },
+      keyframes: {
+        "brand-rise": {
+          "0%": { opacity: "0", transform: "translateY(8px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "brand-rise": "brand-rise 0.6s ease-out both",
       },
     },
   },

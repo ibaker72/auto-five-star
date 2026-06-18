@@ -5,6 +5,63 @@ alternatives considered.
 
 ---
 
+## 2026-06-18 — Review-request engine reuses existing send pipelines
+
+**Decision:** `/review-requests` sends through the same Resend and Twilio
+clients (and the same `EMAIL_LIVE`/`SMS_LIVE` flags) used by the review
+alert path from PR #6. There is no separate Inngest job for review-request
+sends in PR #9 — the manual and CSV flows send synchronously inside the
+server action.
+
+**Rationale:** Manual sends are O(1), and the CSV path is capped at 500
+rows per campaign. Both fit comfortably inside a server-action request
+budget. Reusing the same Resend/Twilio paths means we inherit the entire
+fixture / live / A2P-pending safety matrix already proven in production.
+
+**Alternatives:** Fan out via Inngest for "true async". Deferred — adds
+complexity that doesn't earn its keep until we have drip campaigns
+(targeted for PR #10+).
+
+---
+
+## 2026-06-18 — `qrcode` over a hand-rolled encoder
+
+**Decision:** Add `qrcode@1.5.4` as a runtime dependency for the QR
+generator at `/review-requests`.
+
+**Rationale:** A full QR encoder is a non-trivial algorithm. `qrcode` is
+the canonical Node implementation, mature, well-maintained, generates
+both PNG and SVG, and weighs around 25KB minified. It runs server-side
+only — the QR is rendered behind a Next.js API route, so it doesn't ship
+to the browser. The spec explicitly allowed a lightweight dependency
+when no library is already installed.
+
+**Alternatives:** Inline a tiny QR implementation (significant code,
+maintenance burden), use an external QR API (privacy / availability
+concerns, and we'd be leaking the customer's Google review URL to a
+third party).
+
+---
+
+## 2026-06-18 — Review-request templates have one schema across email and SMS
+
+**Decision:** Each industry has one template body with three variables —
+`{{customerName}}`, `{{businessName}}`, `{{reviewUrl}}`. The same body
+works for both email and SMS channels. Email wraps it in a small HTML
+shell; SMS uses the raw text.
+
+**Rationale:** A single short template keeps it owner-editable. The
+160-char SMS budget plus our three-variable maximum keeps every default
+template under one SMS segment. `validateTemplate` rejects unknown
+variables before any send, so typos like `{{userName}}` are caught
+before they ship.
+
+**Alternatives:** Channel-specific templates (more flexibility, more
+maintenance, more places for a typo to silently render `{{customerName}}`
+into a customer-facing message).
+
+---
+
 ## 2026-06-16 — Inngest over Trigger.dev for background jobs
 
 **Decision:** Use Inngest.

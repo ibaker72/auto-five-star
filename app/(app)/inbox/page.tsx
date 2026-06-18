@@ -123,11 +123,19 @@ export default async function InboxPage({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Inbox</h1>
-        <p className="text-sm text-muted-foreground">
-          Showing the latest 100 reviews matching your filters.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Inbox</h1>
+          <p className="text-sm text-muted-foreground">
+            Showing the latest 100 reviews matching your filters.
+          </p>
+        </div>
+        <Link
+          href="/review-requests"
+          className="rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+        >
+          Ask recent customers for reviews →
+        </Link>
       </div>
 
       <Notice searchParams={searchParams} />

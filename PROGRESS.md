@@ -26,6 +26,61 @@ Week-by-week MVP tracker.
 - [ ] Deploy to Vercel
 - [ ] Smoke test with real GBP
 
+### PR #9 smoke path (local — review growth engine + brand upgrade)
+
+1. Apply the new migration in Supabase, then the RLS policy:
+   `lib/db/migrations/0005_review_growth_engine.sql`
+   `lib/db/policies/0005_review_requests_rls.sql`
+2. `npm install` (picks up `qrcode` + `@types/qrcode`).
+3. `npm run typecheck && npm run lint && npm run build` — all should pass.
+4. `npm run dev`. Sign in.
+5. **Visual brand**:
+   - `/`, `/features`, `/pricing` all render with the gradient hero,
+     animated star row, hover-lift cards, and brand glow.
+   - Footer reads `© 2026 AutoFiveStar. Powered by Tweak & Build.` with
+     the link pointing to <https://www.tweakandbuild.com>.
+   - `/login` and `/signup` also show the "Powered by Tweak & Build" line.
+   - Toggle `prefers-reduced-motion` in DevTools → all glow / star
+     animations stop, hover lifts hold still, CTA shine disappears.
+6. **Marketing demo panels**: `/` has the new "See AutoFiveStar in action"
+   section with four panels (Inbox, Negative review alert, AI draft,
+   Analytics). All copy is sample data; legend above the section says so.
+7. **Review Requests app page**:
+   - Side nav now lists "Review Requests" between Inbox and Locations.
+   - `/review-requests` loads on Starter, Growth, and Pro. On Starter,
+     the SMS dropdown options are disabled with a "— Growth/Pro" hint,
+     and the CSV import section shows the upgrade pane with a link to
+     `/billing`.
+   - Manual form: type a name, email, leave channel = Email, paste a URL
+     like `https://g.page/r/test/review`, click Send. Expect:
+     - With `EMAIL_LIVE=false` (dev) → `[email/fixture]` server log + a
+       new `review_request_campaigns` row with `status=completed`, a
+       `review_request_recipients` row with `status=sent`, and two
+       `review_request_events` rows (`campaign.created`, `request.sent`).
+     - Toggle to SMS-only on Growth/Pro with a `+1…` phone → fixture log,
+       row goes to `status=sent`. On Starter the option is disabled and
+       the server-side guard rejects with a friendly message.
+   - CSV form (Growth/Pro): paste in a 5-row CSV with mixed valid /
+     invalid rows. The preview table flags bad rows ("name missing",
+     "bad email", etc.) before send. Tick the confirmation, click Send →
+     campaign created, one recipient row per valid customer per channel.
+   - QR panel: paste any Google review URL → preview SVG renders inline
+     within ~250ms. Click Download PNG / SVG → file downloads. Try a bad
+     URL like `not-a-url` → red error inside the panel.
+8. **Analytics tiles**: above the forms, six metric cards show
+   `sent / pending / failed / clicked / reviewed / last 30 days`. Send
+   a manual request → "Sent" goes from 0 to 1.
+9. **CTAs**: `/dashboard` shows the new "Grow your reviews" card with
+   three buttons (Ask recent customers, Create review request, Download
+   QR). `/inbox` shows the "Ask recent customers for reviews →" link
+   in the top right.
+10. **Compliance**: try a template with `{{userName}}` instead of
+    `{{customerName}}` → action rejects with "Unknown template
+    variables: userName." Drop `{{reviewUrl}}` from the template → action
+    rejects with "Template is missing required variables: reviewUrl."
+11. **Mobile** (Chrome devtools 375px wide): nav collapses, demo panels
+    stack, manual form fields stack to one column, QR preview shrinks.
+
 ### PR #8 smoke path (local — marketing site + audit funnel)
 
 1. Apply migration `lib/db/migrations/0004_bent_squadron_sinister.sql` in
@@ -370,7 +425,41 @@ Unknown event types receive a 200 (Stripe will stop retrying).
       demo_clicked, contact_clicked, audit_email_sent, etc.)
 - [x] SEO: per-page metadata + OpenGraph + Twitter + canonical + FAQ schema
 - [ ] PDF download (deferred — emailed HTML report covers the goal)
-- [ ] Referral system (PR #9 candidate)
-- [ ] CSV import for past Tweak & Build clients (PR #9 candidate)
-- [ ] Outreach emails using unanswered review count (PR #9 candidate)
+- [ ] Referral system (deferred to a future PR)
+- [x] CSV import for past Tweak & Build clients (PR #9)
+- [ ] Outreach emails using unanswered review count (deferred)
 - [ ] Launch checklist (final PR)
+
+## PR #9 — Review growth engine + visual brand upgrade
+
+Shipped:
+
+- [x] "Powered by Tweak & Build" footer line on marketing + auth pages
+- [x] Brand visual system: electric-blue/navy/cyan/amber palette, gradient
+      text, brand glow, hover lifts, CTA shine, animated stars, all CSS-only
+      and `prefers-reduced-motion` aware
+- [x] Reusable UI: `BrandGlow`, `SectionShell`, `MetricCard`, `AnimatedStars`
+- [x] Marketing hero refresh + four-up demo panels ("See AutoFiveStar in
+      action") with sample data clearly labelled
+- [x] `/review-requests` page with manual send form, CSV bulk import, QR
+      generator, recent campaigns list, and analytics tiles
+- [x] DB migration `0005_review_growth_engine.sql` + RLS policies
+      `0005_review_requests_rls.sql` for `review_request_campaigns`,
+      `review_request_recipients`, `review_request_events`
+- [x] Industry-tuned review-request templates in
+      `lib/review-requests/templates.ts` for all ten industry packs
+- [x] Entitlement helpers `review_requests.sms` and `review_requests.csv`
+      tied to the existing `requireEntitlement` pattern (Starter caps to
+      manual single-email only)
+- [x] QR generator API route `/api/review-requests/qr` (PNG + SVG)
+- [x] Analytics helper `lib/analytics/review-requests.ts`
+- [x] Dashboard + inbox CTAs ("Ask recent customers for reviews")
+- [x] App nav: "Review Requests" link
+- [x] `typecheck`, `lint`, `build` clean
+
+Deferred (callouts in DECISIONS.md):
+
+- Click and "reviewed" attribution links — schema + UI placeholders are
+  in, the redirect/landing wiring will land in PR #10
+- Inngest scheduler for drip campaigns
+- Per-campaign analytics drill-down (we ship aggregate tiles in PR #9)

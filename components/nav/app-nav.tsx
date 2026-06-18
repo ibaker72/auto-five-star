@@ -11,6 +11,7 @@ type Props = {
 const LINKS: Array<{ href: string; label: string }> = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/inbox", label: "Inbox" },
+  { href: "/review-requests", label: "Review Requests" },
   { href: "/locations", label: "Locations" },
   { href: "/settings", label: "Settings" },
   { href: "/billing", label: "Billing" },
@@ -22,10 +23,13 @@ export function AppNav({
   onboardingIncomplete = false,
 }: Props) {
   return (
-    <header className="border-b bg-card">
+    <header className="sticky top-0 z-30 border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container mx-auto flex h-14 items-center justify-between gap-6 px-6">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-sm font-bold tracking-tight">
+          <Link
+            href="/dashboard"
+            className="text-sm font-bold tracking-tight text-brand-gradient"
+          >
             AutoFiveStar
           </Link>
           <span className="hidden text-xs text-muted-foreground sm:inline">
@@ -37,7 +41,7 @@ export function AppNav({
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-secondary hover:text-foreground"
+              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
             >
               {link.label}
             </Link>

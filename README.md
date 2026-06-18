@@ -203,6 +203,54 @@ and the avoid-claims rules from the prompt itself.
 `/dashboard` consumes this for the stats grid plus two lightweight CSS-bar
 visualizations (rating distribution + trend). No additional dependencies.
 
+### Review growth engine (Starter / Growth / Pro)
+
+`/review-requests` is the outbound side of AutoFiveStar — turning happy
+customers into Google reviews without violating Google's review policy.
+
+Three entry points, all on the same page:
+
+1. **Manual send** — type a customer's name + email/phone, pick a channel
+   (Email, SMS, or Both), preview the rendered template, and send. Email
+   uses Resend; SMS uses Twilio. Both respect the existing `EMAIL_LIVE` and
+   `SMS_LIVE` flags from PR #6 — see [Review alerts](#review-alerts) for the
+   full behavior matrix.
+2. **CSV import** — paste in `name,email,phone` rows for up to 500
+   customers. The form validates row-by-row, lets the user preview the
+   rendered template with the first row, requires a manual confirmation
+   before any sends, and writes one `review_request_recipients` row per
+   send. Gated to Growth and Pro.
+3. **QR generator** — paste in your Google review URL, preview the QR, and
+   download PNG or SVG. Useful for in-shop signage, receipts, and door
+   stickers. Uses `qrcode` (≈25KB minified). Available to all plans.
+
+Templates live in `lib/review-requests/templates.ts`, one per industry pack
+(HVAC, plumbing, roofing, auto dealer, auto repair, dentist, restaurant,
+gym, cleaning, general). Variables: `{{customerName}}`, `{{businessName}}`,
+`{{reviewUrl}}`. `validateTemplate` rejects unknown variables and missing
+required fields before any send happens.
+
+Plan gating (via `requireEntitlement`):
+
+| Action                | Starter | Growth | Pro |
+| --------------------- | ------- | ------ | --- |
+| Manual single send    | ✓       | ✓      | ✓   |
+| Email channel         | ✓       | ✓      | ✓   |
+| SMS channel           | —       | ✓      | ✓   |
+| CSV import            | —       | ✓      | ✓   |
+| QR code download      | ✓       | ✓      | ✓   |
+
+Compliance: templates are honest. We refuse incentive language, review
+gating ("only review if happy"), fake urgency, or guaranteed-rating
+claims in templates and in the marketing copy. The `/review-requests`
+page also surfaces an explicit "Send only to real, recent customers"
+notice above the forms.
+
+Analytics live in `lib/analytics/review-requests.ts`. The page renders:
+
+- Sent, pending, failed/skipped, clicked, reviewed, last 30 days
+- Most recent five campaigns with channel and status
+
 ### Bulk actions (Pro)
 
 Inbox rows have selection checkboxes. The sticky bulk-actions bar at the
@@ -362,6 +410,34 @@ In the Supabase dashboard:
 - [`DECISIONS.md`](./DECISIONS.md) — architectural decisions log
 - [`PROGRESS.md`](./PROGRESS.md) — weekly deliverables tracker
 - [`.env.example`](./.env.example) — every config key
+
+### Brand visual system (PR #9)
+
+AutoFiveStar uses an "electric blue on near-black" palette with soft cyan
+and amber accents:
+
+- Primary: hsl(221 90% 56%) (`--brand-electric`)
+- Navy: hsl(222 47% 11%) (`--brand-navy`)
+- Cyan accent: hsl(195 88% 60%) (`--brand-cyan`)
+- Amber accent: hsl(38 95% 56%) (`--brand-amber`)
+- Success: hsl(152 65% 42%) (`--brand-success`)
+
+Reusable brand components live in `components/ui/`:
+
+- `BrandGlow` — decorative radial glow behind heroes / empty states. Drifts
+  slowly via `animate-brand-glow`; disabled under `prefers-reduced-motion`.
+- `SectionShell` — standard section wrapper with `plain` / `soft` /
+  `tint` / `navy` tones.
+- `MetricCard` — branded dashboard stat tile with hover lift.
+- `AnimatedStars` — pulsing five-star row for marketing + empty states.
+
+Utility classes: `text-brand-gradient`, `bg-brand-gradient`, `cta-shine`
+(buttons), `hover-lift`, `shadow-card-soft`, `shadow-card-lift`,
+`ring-brand-glow`, `animate-brand-rise`, `animate-brand-star`,
+`animate-brand-glow`. All animations respect `prefers-reduced-motion`.
+
+The marketing footer + auth pages link to https://www.tweakandbuild.com as
+"Powered by Tweak & Build".
 
 ## Support
 

@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MetricCard } from "@/components/ui/metric-card";
 import { RatingDistribution } from "@/components/analytics/rating-distribution";
 import { ReviewTrend } from "@/components/analytics/review-trend";
 import { requireOrgContext } from "@/lib/auth/org";
@@ -85,38 +86,41 @@ export default async function DashboardPage() {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
+        <MetricCard
           label="Total reviews"
           value={analytics.totalReviews.toString()}
+          tone="primary"
           hint={
             analytics.reviewsThisWeek > 0
               ? `${analytics.reviewsThisWeek} this week`
               : undefined
           }
         />
-        <Stat
+        <MetricCard
           label="Average rating"
           value={
             analytics.averageRating !== null
               ? analytics.averageRating.toFixed(1)
               : "—"
           }
+          tone="warning"
           hint={
             analytics.averageRating !== null
               ? "out of 5.0"
               : "no reviews yet"
           }
         />
-        <Stat
+        <MetricCard
           label="Response rate"
           value={
             analytics.responseRate !== null
               ? `${analytics.responseRate}%`
               : "—"
           }
+          tone="success"
           hint={`${analytics.postedCount} posted`}
         />
-        <Stat
+        <MetricCard
           label="AI responses (mo)"
           value={aiLabel}
           hint="resets monthly"
@@ -124,24 +128,25 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat
+        <MetricCard
           label="Unanswered"
           value={analytics.unanswered.toString()}
+          tone={analytics.urgentUnanswered > 0 ? "danger" : "default"}
           hint={
             analytics.urgentUnanswered > 0
               ? `${analytics.urgentUnanswered} urgent`
               : undefined
           }
         />
-        <Stat
+        <MetricCard
           label="This week"
           value={analytics.reviewsThisWeek.toString()}
         />
-        <Stat
+        <MetricCard
           label="This month"
           value={analytics.reviewsThisMonth.toString()}
         />
-        <Stat
+        <MetricCard
           label="Posted (all-time)"
           value={analytics.postedCount.toString()}
         />
@@ -243,6 +248,27 @@ export default async function DashboardPage() {
         </Card>
       ) : null}
 
+      <Card className="border-primary/20 bg-gradient-to-br from-primary/5 via-card to-card">
+        <CardHeader>
+          <CardTitle>Grow your reviews</CardTitle>
+          <CardDescription>
+            Ask recent customers for a Google review, send a bulk campaign,
+            or print a QR code for in-person customers.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          <Button asChild variant="brand">
+            <Link href="/review-requests">Ask recent customers for reviews</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href="/review-requests#manual">Create review request</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/review-requests#qr">Download review QR code</Link>
+          </Button>
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap gap-2">
         <Button asChild>
           <Link href="/inbox?status=new">Generate drafts for unanswered</Link>
@@ -255,29 +281,5 @@ export default async function DashboardPage() {
         </Button>
       </div>
     </div>
-  );
-}
-
-function Stat({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription>{label}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-3xl font-semibold tabular-nums">{value}</p>
-        {hint ? (
-          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-        ) : null}
-      </CardContent>
-    </Card>
   );
 }
