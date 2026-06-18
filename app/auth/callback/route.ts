@@ -17,8 +17,12 @@ export async function GET(request: NextRequest) {
   const next = sanitizeNext(url.searchParams.get("next"));
 
   if (!code) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[auth/callback] missing OAuth code");
+    }
     const back = url.clone();
     back.pathname = "/login";
+    back.search = "";
     back.searchParams.set("error", "Missing OAuth code.");
     return NextResponse.redirect(back);
   }
@@ -28,20 +32,32 @@ export async function GET(request: NextRequest) {
     code,
   );
   if (exchangeError) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[auth/callback] code exchange failed:", exchangeError.message);
+    }
+    // Clear any partial/broken session so the user starts clean on login.
+    await supabase.auth.signOut().catch(() => {});
     const back = url.clone();
     back.pathname = "/login";
-    back.searchParams.set("error", exchangeError.message);
+    back.search = "";
+    back.searchParams.set("reason", "session-expired");
     return NextResponse.redirect(back);
   }
 
+  // Verify the freshly-exchanged session against the Auth server before trusting it.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user?.email) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[auth/callback] no verified user after exchange");
+    }
+    await supabase.auth.signOut().catch(() => {});
     const back = url.clone();
     back.pathname = "/login";
-    back.searchParams.set("error", "No user returned by Supabase.");
+    back.search = "";
+    back.searchParams.set("reason", "session-expired");
     return NextResponse.redirect(back);
   }
 

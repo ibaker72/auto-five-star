@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { getCurrentUser } from "@/lib/auth/supabase-server";
+import {
+  clearServerSession,
+  getAuthenticatedUser,
+} from "@/lib/auth/supabase-server";
 import { logout } from "@/app/(auth)/actions";
 
 export default async function OnboardingLayout({
@@ -9,8 +12,12 @@ export default async function OnboardingLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
-  if (!user?.email) redirect("/login");
+  const { user, error } = await getAuthenticatedUser();
+  if (error) {
+    await clearServerSession();
+    redirect("/login?reason=session-expired");
+  }
+  if (!user?.email) redirect("/login?reason=session-expired");
 
   return (
     <div className="min-h-screen bg-background">

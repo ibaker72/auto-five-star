@@ -9,12 +9,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginWithGoogle, loginWithPassword } from "../actions";
 
+const REASON_MESSAGES: Record<string, string> = {
+  "session-expired":
+    "Your session expired or could not be verified. Please sign in again.",
+  "signed-out": "You've been signed out. Sign in again to continue.",
+};
+
 export function LoginForm() {
   const search = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(
     search.get("error") ?? null,
   );
+  const reason = search.get("reason");
+  const notice = reason ? REASON_MESSAGES[reason] ?? null : null;
   const next = search.get("next") ?? "/dashboard";
 
   function onPasswordSubmit(formData: FormData) {
@@ -41,6 +49,10 @@ export function LoginForm() {
       {error ? (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : notice ? (
+        <Alert>
+          <AlertDescription>{notice}</AlertDescription>
         </Alert>
       ) : null}
 
