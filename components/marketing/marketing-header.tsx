@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 
 const LINKS = [
   { href: "/features", label: "Features" },
+  { href: "/industries", label: "Industries" },
   { href: "/pricing", label: "Pricing" },
+  { href: "/agencies", label: "Agencies" },
   { href: "/free-audit", label: "Free Audit" },
-  { href: "/contact", label: "Contact" },
 ];
 
 export function MarketingHeader() {
