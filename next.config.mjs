@@ -21,8 +21,8 @@ export default withSentryConfig(nextConfig, {
 
   project: "autofivestar",
 
-  // Only print logs for uploading source maps in CI
-  silent: !process.env.CI,
+  // Keep CI logs clean from non-actionable sentry-cli sourcemap warnings.
+  silent: true,
 
   // For all available options, see:
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup/
@@ -37,12 +37,6 @@ export default withSentryConfig(nextConfig, {
   tunnelRoute: "/monitoring",
 
   webpack: {
-    unstable_sentryWebpackPluginOptions: {
-      sourcemaps: {
-        sourceMapReference: false,
-      },
-    },
-
     // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
     // See the following for more information:
     // https://docs.sentry.io/product/crons/
