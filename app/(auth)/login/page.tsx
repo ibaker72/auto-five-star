@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BrandGlow } from "@/components/ui/brand-glow";
 import { AuthFooter } from "@/components/marketing/auth-footer";
+import { Logo } from "@/components/brand/logo";
 import { LoginForm } from "./login-form";
 
 export const metadata = { title: "Log in" };
@@ -12,12 +13,9 @@ export default function LoginPage() {
     <main className="relative isolate flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
       <BrandGlow intensity="subtle" />
       <div className="relative w-full max-w-md space-y-6">
-        <div className="text-center">
-          <Link
-            href="/"
-            className="text-2xl font-bold tracking-tight text-brand-gradient"
-          >
-            AutoFiveStar
+        <div className="flex justify-center">
+          <Link href="/" aria-label="AutoFiveStar home">
+            <Logo markSize={36} wordmarkClassName="text-2xl" />
           </Link>
         </div>
         <Card className="shadow-card-lift">

@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     description:
       "Pull Google reviews every 15 minutes. AI drafts three reply variants. Analytics and alerts that owners actually open.",
     type: "website",
+    images: ["/opengraph-image"],
   },
 };
 

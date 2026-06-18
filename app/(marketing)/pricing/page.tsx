@@ -16,6 +16,7 @@ export const metadata: Metadata = {
     description:
       "Simple, owner-friendly pricing. 14-day free trial. Cancel anytime.",
     type: "website",
+    images: ["/opengraph-image"],
   },
 };
 

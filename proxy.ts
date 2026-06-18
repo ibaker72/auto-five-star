@@ -20,6 +20,14 @@ const PUBLIC_PREFIXES = [
   "/forgot-password",
   "/auth", // /auth/callback and any other auth sub-route
   "/monitoring", // Sentry tunnelRoute (see next.config.mjs)
+  // PWA / branding assets that must load without auth (manifest, app icons,
+  // social cards). Most resolve to extension paths excluded by the matcher
+  // below, but the dynamic /icons/* PNG routes have no extension, so list them.
+  "/icons",
+  "/opengraph-image",
+  "/twitter-image",
+  "/apple-icon",
+  "/apple-touch-icon",
   // Unauthenticated API endpoints (webhooks, ingestion, public lookups):
   "/api/stripe/webhook",
   "/api/inngest",

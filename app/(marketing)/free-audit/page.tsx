@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     description:
       "Score your Google reputation in two minutes. No credit card required.",
     type: "website",
+    images: ["/opengraph-image"],
   },
 };
 

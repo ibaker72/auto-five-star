@@ -1,17 +1,24 @@
 import Link from "next/link";
+import { Logo } from "@/components/brand/logo";
+import { InstallAppButton } from "@/components/install-app-button";
 
 export function MarketingFooter() {
   return (
     <footer className="mt-16 border-t bg-gradient-to-b from-background to-secondary/30">
       <div className="container mx-auto grid gap-8 px-6 py-12 text-sm text-muted-foreground sm:grid-cols-2 md:grid-cols-4">
         <div>
-          <p className="text-sm font-bold tracking-tight text-foreground">
-            AutoFiveStar
-          </p>
-          <p className="mt-2 max-w-xs">
+          <Logo markSize={26} wordmarkClassName="text-sm" />
+          <p className="mt-3 max-w-xs">
             AI review replies and review-request automation for local
             businesses. Never leave a Google review unanswered.
           </p>
+          <InstallAppButton
+            className="mt-4"
+            variant="outline"
+            size="sm"
+            label="Download App"
+            hideWhenInstalled={false}
+          />
         </div>
         <div>
           <p className="font-medium text-foreground">Product</p>

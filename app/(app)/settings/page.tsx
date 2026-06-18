@@ -20,6 +20,7 @@ import {
   listIndustryPacks,
 } from "@/lib/templates/industry-packs";
 import { cn } from "@/lib/utils";
+import { InstallAppButton } from "@/components/install-app-button";
 import {
   saveBrandVoice,
   saveIndustry,
@@ -87,6 +88,29 @@ export default async function SettingsPage({
                 </Link>
               </>
             )}
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Install the app</CardTitle>
+          <CardDescription>
+            Add AutoFiveStar to your desktop or phone home screen for one-tap
+            access and a full-screen, app-like experience.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InstallAppButton
+            variant="brand"
+            size="default"
+            label="Install AutoFiveStar"
+            hideWhenInstalled={false}
+          />
+          <p className="mt-3 text-xs text-muted-foreground">
+            On iPhone, open in Safari and tap Share → Add to Home Screen. On
+            Android or desktop Chrome, use the install icon in the address bar or
+            browser menu.
           </p>
         </CardContent>
       </Card>

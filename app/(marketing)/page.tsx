@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BrandGlow } from "@/components/ui/brand-glow";
 import { AnimatedStars } from "@/components/ui/animated-stars";
 import { DemoPanels } from "@/components/marketing/demo-panels";
+import { FeatureShowcase } from "@/components/marketing/feature-showcase";
 import { centsToUsd } from "@/lib/utils";
 import { PLAN_CONFIG, PLANS } from "@/lib/billing/plans";
 
@@ -19,12 +20,14 @@ export const metadata: Metadata = {
     url: "https://autofivestar.com",
     siteName: "AutoFiveStar",
     type: "website",
+    images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
     title: "AutoFiveStar — Review Growth Engine",
     description:
       "AI-powered review replies plus review-request automation for local businesses. Start your free reputation audit.",
+    images: ["/twitter-image"],
   },
   alternates: { canonical: "https://autofivestar.com/" },
 };
@@ -36,6 +39,7 @@ export default function HomePage() {
       <DemoSection />
       <Problem />
       <Solution />
+      <FeatureShowcase />
       <HowItWorks />
       <PricingPreview />
       <Cta />

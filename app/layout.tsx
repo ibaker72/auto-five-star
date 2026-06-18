@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,13 +8,42 @@ export const metadata: Metadata = {
     template: "%s · AutoFiveStar",
   },
   description:
-    "Get instant review alerts, AI-powered responses, analytics, and reputation monitoring for your business. Start your free reputation audit.",
+    "AI review response and review growth engine for local businesses. Instant review alerts, AI-powered replies, review-request automation, and analytics.",
+  applicationName: "AutoFiveStar",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ?? "https://autofivestar.com",
   ),
+  alternates: { canonical: "https://autofivestar.com" },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "AutoFiveStar",
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
   openGraph: {
     siteName: "AutoFiveStar",
+    type: "website",
+    url: "https://autofivestar.com",
+    title: "AutoFiveStar — Review growth engine for local businesses",
+    description:
+      "AI review response and review growth engine for local businesses.",
+    images: ["/opengraph-image"],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "AutoFiveStar — Review growth engine for local businesses",
+    description:
+      "AI review response and review growth engine for local businesses.",
+    images: ["/twitter-image"],
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#2563eb",
 };
 
 // Reference Sentry so the import is not tree-shaken away — keeps the
