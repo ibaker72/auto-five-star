@@ -3,25 +3,43 @@ import { NextResponse, type NextRequest } from "next/server";
 
 type CookieToSet = { name: string; value: string; options: CookieOptions };
 
-const PUBLIC_PATHS = [
-  "/",
+/**
+ * Public page + API routes (and their subpaths) that must always render without
+ * authentication. "/" is matched exactly (handled in isPublicRoute) so it never
+ * acts as a catch-all prefix.
+ */
+const PUBLIC_PREFIXES = [
   "/features",
   "/pricing",
   "/free-audit",
   "/contact",
+  "/terms",
+  "/privacy",
   "/login",
   "/signup",
   "/forgot-password",
-  "/auth/callback",
+  "/auth", // /auth/callback and any other auth sub-route
+  "/monitoring", // Sentry tunnelRoute (see next.config.mjs)
+  // Unauthenticated API endpoints (webhooks, ingestion, public lookups):
   "/api/stripe/webhook",
   "/api/inngest",
   "/api/audit",
   "/api/funnel",
 ];
 
-function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
+/**
+ * Well-known static / SEO files that are always public, independent of the
+ * prefix list. Most are already excluded by the matcher below, but this keeps
+ * the auth logic correct even if the matcher changes.
+ */
+const PUBLIC_FILE =
+  /^\/(robots\.txt|sitemap\.xml|manifest\.webmanifest|favicon\.ico|.*\.(?:png|jpe?g|gif|webp|avif|svg|ico|txt|xml|woff2?|ttf|map))$/;
+
+function isPublicRoute(pathname: string): boolean {
+  if (pathname === "/") return true;
+  if (PUBLIC_FILE.test(pathname)) return true;
+  return PUBLIC_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 }
 
@@ -37,28 +55,37 @@ function hasSupabaseAuthCookie(request: NextRequest): boolean {
   });
 }
 
+/** Expire any Supabase auth cookies on the given response. */
+function clearSupabaseCookies(request: NextRequest, response: NextResponse) {
+  for (const cookie of request.cookies.getAll()) {
+    if (cookie.name.startsWith("sb-")) {
+      response.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
+    }
+  }
+}
+
 /**
- * Edge auth + session refresh.
+ * Edge auth + Supabase session refresh.
  *
- * Previously this gated purely on the *presence* of an `sb-...-auth-token`
- * cookie. A stale or broken cookie (expired/rotated refresh token) still has a
- * value, so a logged-out-in-practice user was treated as authed: the proxy let
- * them into /dashboard, the server failed to validate the session and bounced
- * to /login, and the proxy bounced them straight back to /dashboard — an
- * infinite redirect loop that surfaced as a blank white page.
- *
- * Now we actually validate the session with Supabase here (which also lets
- * @supabase/ssr persist a freshly rotated cookie, something Server Components
- * cannot do), and on failure we clear the bad cookies and send the user to
- * login instead of trusting a stale token.
+ * Invariants:
+ * - Public routes (marketing, /login, /auth/callback, static/SEO files) always
+ *   render. The proxy never returns 403 and never blocks anonymous visitors —
+ *   "/" in particular is always allowed.
+ * - On protected *pages* without a valid user, redirect to
+ *   /login?reason=session-expired (never 403), clearing any stale cookies.
+ * - On protected *API* routes, fall through so the handler returns its own JSON
+ *   401/403 instead of an HTML redirect.
+ * - A broken/stale auth cookie is validated against Supabase (which also lets
+ *   @supabase/ssr persist a freshly rotated cookie) and cleared on failure, so
+ *   a stale token can't loop /login <-> /dashboard or leave the user stuck.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const publicRoute = isPublic(pathname);
+  const publicRoute = isPublicRoute(pathname);
   const hasAuthCookie = hasSupabaseAuthCookie(request);
 
-  // Anonymous visitor on a public page: nothing to refresh or guard, skip the
-  // Supabase round-trip entirely.
+  // Fast path: anonymous visitor on a public route. Nothing to refresh or
+  // guard — never call Supabase, never block. Guarantees marketing pages load.
   if (publicRoute && !hasAuthCookie) {
     return NextResponse.next({ request });
   }
@@ -87,65 +114,75 @@ export async function proxy(request: NextRequest) {
   );
 
   // Validate against the Auth server. Never trust getSession()/cookie presence.
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  const isAuthed = !error && !!user;
-
-  // Protected API route without a valid user: don't redirect to an HTML login
-  // page — let the handler return its own JSON 401 (it calls requireOrgContext).
-  if (!isAuthed && !publicRoute && pathname.startsWith("/api/")) {
-    return response;
-  }
-
-  // Protected page route without a valid user: clear any stale cookies and
-  // redirect to login instead of trusting a stale token.
-  if (!isAuthed && !publicRoute) {
+  // Any failure here must degrade to "not authenticated", never to a hard block.
+  let isAuthed = false;
+  let authErrored = false;
+  try {
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+    isAuthed = !error && !!user;
+    authErrored = !!error;
     if (error && process.env.NODE_ENV !== "production") {
       console.error(`[proxy] auth check failed for ${pathname}:`, error.message);
     }
-
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.search = "";
-    url.searchParams.set("next", pathname);
-    // Distinguish a broken/expired session from a plain not-logged-in visit.
-    if (hasAuthCookie) {
-      url.searchParams.set("reason", "session-expired");
+  } catch (err) {
+    authErrored = true;
+    if (process.env.NODE_ENV !== "production") {
+      console.error(`[proxy] getUser threw for ${pathname}:`, err);
     }
-
-    const redirectResponse = NextResponse.redirect(url);
-    // Carry over any cookies the refresh attempt produced, then hard-expire the
-    // Supabase auth cookies so a broken token can't loop us back here.
-    for (const cookie of response.cookies.getAll()) {
-      redirectResponse.cookies.set(cookie);
-    }
-    for (const cookie of request.cookies.getAll()) {
-      if (cookie.name.startsWith("sb-")) {
-        redirectResponse.cookies.set(cookie.name, "", { maxAge: 0, path: "/" });
-      }
-    }
-    return redirectResponse;
   }
 
-  // Logged-in user landing on an auth page: send them to the dashboard. Because
-  // a broken session is cleared above (isAuthed === false there), this can only
-  // fire for a genuinely valid session, so it can't create a redirect loop.
-  if (isAuthed && (pathname === "/login" || pathname === "/signup")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
-    url.search = "";
-    return NextResponse.redirect(url);
+  // Public route: always allow it to render. Clear a broken cookie if present,
+  // but never redirect/block a public page on an auth failure.
+  if (publicRoute) {
+    if (!isAuthed && hasAuthCookie) {
+      clearSupabaseCookies(request, response);
+    }
+    // Logged-in user on an auth page: send them to the dashboard. Only fires
+    // for a genuinely valid session, so it can't create a redirect loop.
+    if (isAuthed && (pathname === "/login" || pathname === "/signup")) {
+      const dest = request.nextUrl.clone();
+      dest.pathname = "/dashboard";
+      dest.search = "";
+      return NextResponse.redirect(dest);
+    }
+    return response;
   }
 
-  return response;
+  // --- Protected route below ---
+
+  // Protected API route: let the handler return its own JSON 401/403.
+  if (pathname.startsWith("/api/")) {
+    return response;
+  }
+
+  // Protected page with a valid user: allow.
+  if (isAuthed) {
+    return response;
+  }
+
+  // Protected page without a valid user: clear stale cookies and redirect to
+  // login (never 403).
+  const loginUrl = request.nextUrl.clone();
+  loginUrl.pathname = "/login";
+  loginUrl.search = "";
+  loginUrl.searchParams.set("next", pathname);
+  if (hasAuthCookie || authErrored) {
+    loginUrl.searchParams.set("reason", "session-expired");
+  }
+  const redirectResponse = NextResponse.redirect(loginUrl);
+  clearSupabaseCookies(request, redirectResponse);
+  return redirectResponse;
 }
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and static files
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    /*
+     * Run on everything except Next internals, static assets and well-known
+     * SEO/monitoring files. Those are public and must never hit auth logic.
+     */
+    "/((?!_next/static|_next/image|favicon\\.ico|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest|monitoring|.*\\.(?:svg|png|jpe?g|gif|webp|avif|ico|txt|xml|woff2?|ttf|map)$).*)",
   ],
 };
