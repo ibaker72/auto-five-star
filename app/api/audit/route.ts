@@ -146,33 +146,56 @@ export async function POST(request: NextRequest) {
 
   const resultsUrl = buildResultsUrl(result.request.id);
 
-  // Email to the prospect (fire-and-forget but log outcome).
-  const reportEmail = await sendAuditReportEmail({
-    to: email,
-    businessName,
-    report: result.report,
-    resultsUrl,
-  });
-  await recordFunnelEvent({
-    type: reportEmail.ok ? "audit_email_sent" : "audit_email_failed",
-    leadId: result.lead.id,
-    requestId: result.request.id,
-    sessionId,
-    metadata: { fixture: reportEmail.fixture, error: reportEmail.error ?? null },
-  });
+  // Email to the prospect. The lead is already saved and the results page
+  // works regardless — never let an email failure (e.g. EMAIL_LIVE off or a
+  // Resend hiccup) turn a captured lead into a 500 for the prospect.
+  try {
+    const reportEmail = await sendAuditReportEmail({
+      to: email,
+      businessName,
+      report: result.report,
+      resultsUrl,
+    });
+    await recordFunnelEvent({
+      type: reportEmail.ok ? "audit_email_sent" : "audit_email_failed",
+      leadId: result.lead.id,
+      requestId: result.request.id,
+      sessionId,
+      metadata: {
+        fixture: reportEmail.fixture,
+        error: reportEmail.error ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[api/audit] report email failed", err);
+    await recordFunnelEvent({
+      type: "audit_email_failed",
+      leadId: result.lead.id,
+      requestId: result.request.id,
+      sessionId,
+      metadata: {
+        fixture: false,
+        error: err instanceof Error ? err.message : String(err),
+      },
+    });
+  }
 
-  // Internal sales lead notification — ignore failure.
-  await sendAuditLeadNotification({
-    businessName,
-    email,
-    website: result.lead.website,
-    gbpUrl: result.lead.gbpUrl,
-    industry: result.lead.industry,
-    city: result.lead.city,
-    phone: result.lead.phone,
-    score: result.report.score,
-    resultsUrl,
-  });
+  // Internal sales lead notification — best-effort, never blocks the response.
+  try {
+    await sendAuditLeadNotification({
+      businessName,
+      email,
+      website: result.lead.website,
+      gbpUrl: result.lead.gbpUrl,
+      industry: result.lead.industry,
+      city: result.lead.city,
+      phone: result.lead.phone,
+      score: result.report.score,
+      resultsUrl,
+    });
+  } catch (err) {
+    console.error("[api/audit] lead notification failed", err);
+  }
 
   const accept = request.headers.get("accept") ?? "";
   if (accept.includes("application/json")) {
