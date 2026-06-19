@@ -16,6 +16,12 @@ type ConnectionProps = {
   alreadyConnectedSourceIds: Set<string>;
   quota: { used: number; limit: number };
   error: string | null;
+  /** Google accepted OAuth but hasn't granted this project GBP API access. */
+  accessPending?: boolean;
+  /** The accounts/locations shown are demo fixtures, not live data. */
+  showingDemoData?: boolean;
+  /** Current user can see internal setup notes. */
+  isAdmin?: boolean;
 };
 
 export function GoogleConnectionCard(props: ConnectionProps) {
@@ -77,6 +83,41 @@ export function GoogleConnectionCard(props: ConnectionProps) {
             </AlertDescription>
           </Alert>
         ) : null}
+
+        {props.accessPending ? (
+          <Alert>
+            <AlertTitle>Google connected — API access pending</AlertTitle>
+            <AlertDescription>
+              Google connected successfully, but Google has not yet granted API
+              access for this project. We can finish setup manually while
+              approval is pending — your connection is saved and nothing is
+              lost.
+            </AlertDescription>
+          </Alert>
+        ) : null}
+
+        {props.accessPending && props.isAdmin ? (
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+            <p className="font-semibold uppercase tracking-wider">
+              Internal note
+            </p>
+            <p className="mt-1">
+              GBP APIs returned <code>RESOURCE_EXHAUSTED</code> with{" "}
+              <code>quota_limit_value: 0</code>. Submit the Google Business
+              Profile API access request and wait for project approval — quota
+              stays 0 until Google grants it.{" "}
+              <a
+                href="https://developers.google.com/my-business/content/prereqs#request-access"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Request access →
+              </a>
+            </p>
+          </div>
+        ) : null}
+
         {props.error ? (
           <Alert variant="destructive">
             <AlertTitle>Connection error</AlertTitle>
@@ -87,6 +128,7 @@ export function GoogleConnectionCard(props: ConnectionProps) {
         <AccountPicker
           accounts={props.accounts}
           selectedAccount={props.selectedAccount}
+          demoMode={props.showingDemoData}
         />
 
         {props.selectedAccount ? (
@@ -95,6 +137,7 @@ export function GoogleConnectionCard(props: ConnectionProps) {
             locations={props.locations}
             alreadyConnectedSourceIds={props.alreadyConnectedSourceIds}
             quota={props.quota}
+            demoMode={props.showingDemoData}
           />
         ) : null}
 
@@ -110,12 +153,22 @@ export function GoogleConnectionCard(props: ConnectionProps) {
   );
 }
 
+function DemoBadge() {
+  return (
+    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+      Demo data
+    </span>
+  );
+}
+
 function AccountPicker({
   accounts,
   selectedAccount,
+  demoMode,
 }: {
   accounts: GbpAccount[];
   selectedAccount: string | null;
+  demoMode?: boolean;
 }) {
   if (accounts.length === 0) {
     return (
@@ -126,7 +179,10 @@ function AccountPicker({
   }
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">Choose an account</p>
+      <div className="flex items-center gap-2">
+        <p className="text-sm font-medium">Choose an account</p>
+        {demoMode ? <DemoBadge /> : null}
+      </div>
       <div className="flex flex-wrap gap-2">
         {accounts.map((acct) => (
           <Link
@@ -152,21 +208,32 @@ function LocationPicker({
   locations,
   alreadyConnectedSourceIds,
   quota,
+  demoMode,
 }: {
   accountName: string;
   locations: GbpLocation[];
   alreadyConnectedSourceIds: Set<string>;
   quota: { used: number; limit: number };
+  demoMode?: boolean;
 }) {
   const atQuota = quota.used >= quota.limit;
   return (
     <div className="space-y-2">
-      <div className="flex items-baseline justify-between">
-        <p className="text-sm font-medium">Locations under this account</p>
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-medium">Locations under this account</p>
+          {demoMode ? <DemoBadge /> : null}
+        </div>
         <p className="text-xs text-muted-foreground">
           {quota.used} / {quota.limit} locations used
         </p>
       </div>
+      {demoMode ? (
+        <p className="text-xs text-muted-foreground">
+          Example of how your locations will appear. Connecting unlocks once
+          Google grants API access.
+        </p>
+      ) : null}
       {locations.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           This account has no locations.
@@ -195,6 +262,16 @@ function LocationPicker({
                   <span className="text-xs text-muted-foreground">
                     Connected
                   </span>
+                ) : demoMode ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled
+                    title="Available once Google grants API access"
+                  >
+                    Pending approval
+                  </Button>
                 ) : (
                   <form action={connectLocationAction}>
                     <input

@@ -9,6 +9,7 @@ import { requireEntitlement } from "@/lib/billing/entitlements";
 import {
   connectGoogleLocation,
   pullGoogleReviews,
+  isGbpAccessPendingError,
 } from "@/lib/integrations/google";
 import { disconnectGoogle } from "@/lib/integrations/google-tokens";
 import { writeAudit } from "@/lib/audit";
@@ -55,6 +56,9 @@ export async function connectLocationAction(
     });
   } catch (err) {
     console.error("[locations/connect] failed", err);
+    if (isGbpAccessPendingError(err)) {
+      locationsRedirect({ google: "access_pending" });
+    }
     locationsRedirect({
       google: "error",
       message:
@@ -108,6 +112,9 @@ export async function pullReviewsAction(formData: FormData): Promise<void> {
     });
   } catch (err) {
     console.error("[locations/pull] failed", err);
+    if (isGbpAccessPendingError(err)) {
+      locationsRedirect({ google: "access_pending" });
+    }
     locationsRedirect({
       google: "error",
       message:
