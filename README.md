@@ -366,8 +366,11 @@ like `business.manage`. They never share tokens.
 1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials),
    create an **OAuth 2.0 Web Client**.
 2. Set the redirect URI to
-   `https://your-domain.com/api/integrations/google/callback`
-   (and `http://localhost:3000/api/integrations/google/callback` for dev).
+   `https://your-domain.com/api/auth/google/callback`
+   (and `http://localhost:3000/api/auth/google/callback` for dev). The app
+   also serves `/api/auth/callback/google` and the legacy
+   `/api/integrations/google/callback` — all share one handler, so any
+   registered variant works as long as `GOOGLE_REDIRECT_URI` matches it.
 3. On the **OAuth consent screen** add the scope
    `https://www.googleapis.com/auth/business.manage` and submit the app for
    verification. While verification is pending you can add specific Google
@@ -377,7 +380,7 @@ like `business.manage`. They never share tokens.
    GBP_LIVE=true
    GOOGLE_CLIENT_ID=...
    GOOGLE_CLIENT_SECRET=...
-   GOOGLE_REDIRECT_URI=https://your-domain.com/api/integrations/google/callback
+   GOOGLE_REDIRECT_URI=https://your-domain.com/api/auth/google/callback
    ```
 5. OAuth tokens are AES-256-GCM-encrypted with `ENCRYPTION_KEY` before they
    reach the DB (`integration_tokens.access_token_enc` /

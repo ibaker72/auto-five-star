@@ -1,8 +1,8 @@
 import { type NextRequest } from "next/server";
 import { handleGoogleGbpCallback } from "@/lib/integrations/google-callback";
 
-// Legacy redirect URI. Kept for backwards compatibility; shares the same
-// handler as the /api/auth/* callback routes registered in Google Cloud.
+// Compatibility callback for the alternate redirect URI registered in Google
+// Cloud: https://(www.)autofivestar.com/api/auth/callback/google
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
