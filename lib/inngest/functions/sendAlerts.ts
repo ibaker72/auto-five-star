@@ -6,8 +6,8 @@ export const sendReviewAlerts = inngest.createFunction(
     id: "send-review-alerts",
     concurrency: { limit: 10 },
     retries: 2,
+    triggers: { event: "reviews/new.detected" },
   },
-  { event: "reviews/new.detected" },
   async ({ event, step }) => {
     const { orgId, reviewId } = event.data;
     const result = await step.run("process-review-alert", () =>

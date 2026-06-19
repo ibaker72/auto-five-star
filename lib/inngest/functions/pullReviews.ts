@@ -23,8 +23,10 @@ const ALLOWED_SUBSCRIPTION_STATUSES = [
  * per-location concurrency / retry semantics.
  */
 export const pullReviewsCron = inngest.createFunction(
-  { id: "pull-reviews-cron" },
-  { cron: "*/15 * * * *" },
+  {
+    id: "pull-reviews-cron",
+    triggers: { cron: "*/15 * * * *" },
+  },
   async ({ step }) => {
     const targets = await step.run("collect-targets", async () => {
       // Org must have:
@@ -103,8 +105,8 @@ export const pullReviewsForLocation = inngest.createFunction(
     id: "pull-reviews-for-location",
     concurrency: { limit: 5 },
     retries: 3,
+    triggers: { event: "reviews/sync.requested" },
   },
-  { event: "reviews/sync.requested" },
   async ({ event, step }) => {
     const { orgId, locationId } = event.data;
 
