@@ -25,7 +25,7 @@ import {
   type NewReview,
 } from "@/lib/db/schema";
 import { writeAudit } from "@/lib/audit";
-import { HttpError, withRetry } from "./_retry";
+import { HttpError, isRetryableHttpError, withRetry } from "./_retry";
 import {
   getValidGoogleAccessToken,
   GoogleNotConnectedError,
@@ -91,29 +91,72 @@ export class GbpApiError extends HttpError {
   }
 }
 
+/**
+ * Thrown when Google accepts the OAuth scope but has not granted this Cloud
+ * project quota for the Business Profile APIs yet — surfaced as HTTP 429
+ * RESOURCE_EXHAUSTED with quota_limit_value "0". This is a project-approval
+ * state, not a transient rate limit, so it is never retried.
+ */
+export class GbpAccessPendingError extends GbpApiError {
+  constructor(message: string) {
+    super(429, message);
+    this.name = "GbpAccessPendingError";
+  }
+}
+
+/** Does a 429 body indicate "API access not granted yet" vs a transient limit? */
+function looksLikeAccessPending(status: number, body: string): boolean {
+  if (status !== 429) return false;
+  return (
+    /RESOURCE_EXHAUSTED/i.test(body) ||
+    /quota_limit_value["\s:]+["']?0["']?/i.test(body) ||
+    /"quotaValue"\s*:\s*"0"/i.test(body) ||
+    /quota.*\b0\b/i.test(body)
+  );
+}
+
+/** True when the error is the GBP "access not granted yet" state. */
+export function isGbpAccessPendingError(err: unknown): boolean {
+  if (err instanceof GbpAccessPendingError) return true;
+  if (err instanceof GbpApiError) {
+    return looksLikeAccessPending(err.status, err.message);
+  }
+  return false;
+}
+
 async function authedFetch<T>(
   url: string,
   accessToken: string,
   init?: RequestInit,
 ): Promise<T> {
-  return withRetry(async () => {
-    const res = await fetch(url, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new GbpApiError(
-        res.status,
-        `${res.status} ${res.statusText}: ${body}`,
-      );
-    }
-    return (await res.json()) as T;
-  });
+  return withRetry(
+    async () => {
+      const res = await fetch(url, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          ...(init?.headers ?? {}),
+        },
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        if (looksLikeAccessPending(res.status, body)) {
+          throw new GbpAccessPendingError(
+            `${res.status} ${res.statusText}: ${body}`,
+          );
+        }
+        throw new GbpApiError(
+          res.status,
+          `${res.status} ${res.statusText}: ${body}`,
+        );
+      }
+      return (await res.json()) as T;
+    },
+    // Access-pending is a project-approval state — retrying wastes the
+    // user's time and the page load. Everything else keeps default backoff.
+    { retryable: (err) => isRetryableHttpError(err) && !(err instanceof GbpAccessPendingError) },
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -290,6 +333,19 @@ export async function postReviewReplyRaw(
 // ---------------------------------------------------------------------------
 // Fixtures (used when GBP_LIVE=false)
 // ---------------------------------------------------------------------------
+/**
+ * Demo accounts/locations for clearly-labeled previews — e.g. while live GBP
+ * API access is pending approval. Wraps the same fixtures used in demo mode so
+ * the preview matches what the real UI will look like.
+ */
+export function demoGbpAccounts(): GbpAccount[] {
+  return fixtureAccounts();
+}
+
+export function demoGbpLocations(accountName?: string): GbpLocation[] {
+  return fixtureLocations(accountName ?? "accounts/demo-acct-1");
+}
+
 function fixtureAccounts(): GbpAccount[] {
   return [
     {

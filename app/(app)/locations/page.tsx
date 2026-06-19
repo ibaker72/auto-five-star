@@ -9,6 +9,9 @@ import { PLAN_CONFIG } from "@/lib/billing/plans";
 import {
   listGoogleBusinessAccounts,
   listGoogleBusinessLocations,
+  isGbpAccessPendingError,
+  demoGbpAccounts,
+  demoGbpLocations,
   GBP_LIVE_MODE,
   type GbpAccount,
   type GbpLocation,
@@ -41,6 +44,8 @@ export default async function LocationsPage({
   let availableLocations: GbpLocation[] = [];
   let selectedAccount = searchParams.account ?? null;
   let connectError: string | null = null;
+  let accessPending = false;
+  let showingDemoData = false;
 
   if (status.connected) {
     try {
@@ -53,7 +58,16 @@ export default async function LocationsPage({
         );
       }
     } catch (err) {
-      if (err instanceof GoogleNotConnectedError) {
+      if (isGbpAccessPendingError(err)) {
+        // Google accepted the OAuth scope but has not granted this project
+        // GBP API quota yet. Surface a friendly state (never the raw JSON),
+        // keep the account connected, and show clearly-labeled demo data.
+        accessPending = true;
+        accounts = demoGbpAccounts();
+        if (!selectedAccount && accounts[0]) selectedAccount = accounts[0].name;
+        availableLocations = demoGbpLocations(selectedAccount ?? undefined);
+        showingDemoData = true;
+      } else if (err instanceof GoogleNotConnectedError) {
         connectError = "Reconnect Google to continue.";
       } else if (err instanceof GoogleRefreshError) {
         connectError =
@@ -66,6 +80,9 @@ export default async function LocationsPage({
       }
     }
   }
+
+  const isAdmin =
+    ctx.membership.role === "owner" || ctx.membership.role === "admin";
 
   const [connectedLocations, reviewCountsRows] = await Promise.all([
     db
@@ -124,6 +141,9 @@ export default async function LocationsPage({
         alreadyConnectedSourceIds={alreadyConnectedSourceIds}
         quota={quota}
         error={connectError}
+        accessPending={accessPending}
+        showingDemoData={showingDemoData}
+        isAdmin={isAdmin}
       />
 
       <section className="space-y-3">
@@ -235,6 +255,17 @@ function Notice({ searchParams }: { searchParams: SearchParams }) {
         <Alert>
           <AlertTitle>Location removed</AlertTitle>
           <AlertDescription>You can add it back any time.</AlertDescription>
+        </Alert>
+      );
+    case "access_pending":
+      return (
+        <Alert>
+          <AlertTitle>Google connected — API access pending</AlertTitle>
+          <AlertDescription>
+            Google connected successfully, but Google has not yet granted API
+            access for this project. We can finish setup manually while
+            approval is pending.
+          </AlertDescription>
         </Alert>
       );
     case "disconnected":
