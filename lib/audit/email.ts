@@ -71,6 +71,8 @@ export async function sendAuditLeadNotification(args: {
   website: string | null;
   gbpUrl: string | null;
   industry: string | null;
+  city?: string | null;
+  phone?: string | null;
   score: number;
   resultsUrl: string;
 }): Promise<SendEmailResult | null> {
@@ -85,6 +87,8 @@ export async function sendAuditLeadNotification(args: {
       <p><strong>${escapeHtml(args.businessName)}</strong> just ran a reputation audit.</p>
       <ul>
         <li>Email: ${escapeHtml(args.email)}</li>
+        <li>Phone: ${args.phone ? escapeHtml(args.phone) : "—"}</li>
+        <li>City: ${args.city ? escapeHtml(args.city) : "—"}</li>
         <li>Website: ${args.website ? escapeHtml(args.website) : "—"}</li>
         <li>GBP URL: ${args.gbpUrl ? escapeHtml(args.gbpUrl) : "—"}</li>
         <li>Industry: ${args.industry ? escapeHtml(args.industry) : "—"}</li>

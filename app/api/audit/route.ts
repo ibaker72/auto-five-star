@@ -47,6 +47,8 @@ type RequestPayload = {
   website?: string;
   gbp_url?: string;
   industry?: string;
+  city?: string;
+  phone?: string;
   source?: string;
   session_id?: string;
 };
@@ -66,6 +68,8 @@ async function readPayload(request: NextRequest): Promise<RequestPayload> {
     website: String(form.get("website") ?? ""),
     gbp_url: String(form.get("gbp_url") ?? ""),
     industry: String(form.get("industry") ?? ""),
+    city: String(form.get("city") ?? ""),
+    phone: String(form.get("phone") ?? ""),
     source: String(form.get("source") ?? ""),
     session_id: String(form.get("session_id") ?? ""),
   };
@@ -86,6 +90,8 @@ export async function POST(request: NextRequest) {
   const payload = await readPayload(request);
   const businessName = (payload.business_name ?? "").trim();
   const email = (payload.email ?? "").trim();
+  const city = (payload.city ?? "").trim() || null;
+  const phone = (payload.phone ?? "").trim() || null;
   const sessionId = payload.session_id || null;
 
   if (businessName.length === 0) {
@@ -104,7 +110,7 @@ export async function POST(request: NextRequest) {
   await recordFunnelEvent({
     type: "audit_started",
     sessionId,
-    metadata: { business_name: businessName },
+    metadata: { business_name: businessName, city, has_phone: Boolean(phone) },
   });
 
   let result;
@@ -160,6 +166,8 @@ export async function POST(request: NextRequest) {
     website: result.lead.website,
     gbpUrl: result.lead.gbpUrl,
     industry: result.lead.industry,
+    city,
+    phone,
     score: result.report.score,
     resultsUrl,
   });

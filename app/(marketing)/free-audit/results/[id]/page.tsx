@@ -36,16 +36,25 @@ export default async function AuditResultsPage({
         <p className="text-xs uppercase tracking-wider text-muted-foreground">
           Reputation audit
         </p>
-        <h1 className="mt-1 text-3xl font-bold tracking-tight sm:text-4xl">
-          {lead.businessName}
-        </h1>
+        <div className="mt-1 flex flex-wrap items-center gap-3">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            {lead.businessName}
+          </h1>
+          {request.demoMode ? (
+            <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-700">
+              Sample preview
+            </span>
+          ) : null}
+        </div>
 
         {request.demoMode ? (
           <Alert className="mt-6">
-            <AlertTitle>Demo data — we couldn't read your reviews yet</AlertTitle>
+            <AlertTitle>
+              This is a sample preview — connect to see your live numbers
+            </AlertTitle>
             <AlertDescription>
               {rationale ??
-                "This first report uses a representative sample. Sign up to connect your Google Business Profile and see live numbers."}
+                "We can't read your live Google reviews until you connect your Business Profile, so this first report uses representative sample data. Start your plan to see your real score, reviews, and competitor gap."}
             </AlertDescription>
           </Alert>
         ) : null}
@@ -159,11 +168,12 @@ export default async function AuditResultsPage({
 
         <section className="mt-10 rounded-md border bg-primary/5 p-6 text-center">
           <h2 className="text-xl font-bold tracking-tight">
-            Want to fix this on autopilot?
+            Ready to turn this into real review growth?
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-            AutoFiveStar drafts on-brand replies for every review and flags
-            urgent ones the moment they land. 14-day free trial.
+            We&apos;ll connect your Google Business Profile, draft on-brand
+            replies for every review, flag urgent ones instantly, and help you
+            request more five-star reviews — set up with you.
           </p>
           <div className="mt-4">
             <TrackedCtas requestId={request.id} leadId={lead.id} />

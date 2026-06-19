@@ -54,35 +54,30 @@ export function TrackedCtas({ requestId, leadId }: Props) {
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3">
+    <div className="flex w-full flex-col items-center justify-center gap-3 sm:flex-row sm:flex-wrap">
       <Button
         size="lg"
+        variant="brand"
+        className="w-full sm:w-auto"
         disabled={pending}
         onClick={() => track("trial_clicked", "/signup?plan=growth")}
       >
-        Start Free Trial
+        Unlock full review growth plan
       </Button>
       <Button
         size="lg"
         variant="outline"
+        className="w-full sm:w-auto"
         disabled={pending}
         onClick={() => track("demo_clicked", "/contact?topic=demo")}
       >
-        Book Demo
-      </Button>
-      <Button
-        size="lg"
-        variant="ghost"
-        disabled={pending}
-        onClick={() => track("contact_clicked", "/contact?topic=sales")}
-      >
-        Contact Sales
+        Book your review growth setup call
       </Button>
       <Link
-        href="/features"
+        href="/pricing"
         className="text-sm text-muted-foreground underline-offset-4 hover:underline"
       >
-        See features →
+        See plans &amp; pricing →
       </Link>
     </div>
   );

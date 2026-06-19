@@ -9,12 +9,67 @@ import { cn } from "@/lib/utils";
  */
 export function DemoPanels() {
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <InboxPreview />
-      <NegativeAlertPreview />
-      <AiDraftPreview />
-      <AnalyticsPreview />
+    <div className="space-y-6">
+      <GrowthScorePreview />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <InboxPreview />
+        <NegativeAlertPreview />
+        <AiDraftPreview />
+        <ReviewRequestPreview />
+        <CompetitorPreview />
+        <WeeklyReportPreview />
+        <AnalyticsPreview />
+      </div>
     </div>
+  );
+}
+
+function SampleTag() {
+  return (
+    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700">
+      Sample data
+    </span>
+  );
+}
+
+function GrowthScorePreview() {
+  return (
+    <Card className="overflow-hidden border-border/70 shadow-card-lift">
+      <CardContent className="grid gap-6 bg-gradient-to-br from-primary/5 via-card to-card p-6 sm:grid-cols-[auto,1fr] sm:items-center">
+        <div className="flex items-center gap-5">
+          <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-brand-cyan text-white shadow-card-lift">
+            <div className="text-center">
+              <p className="text-3xl font-bold leading-none tabular-nums">87</p>
+              <p className="text-[10px] uppercase tracking-wider opacity-90">/ 100</p>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                Review growth score
+              </p>
+              <SampleTag />
+            </div>
+            <p className="mt-1 text-2xl font-bold tracking-tight">Grade B+</p>
+            <p className="text-sm text-emerald-600">▲ up 6 points this month</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 text-center sm:border-l sm:pl-6">
+          {[
+            { v: "4.7", l: "Avg rating" },
+            { v: "+18", l: "New reviews / mo" },
+            { v: "94%", l: "Response rate" },
+          ].map((m) => (
+            <div key={m.l}>
+              <p className="text-xl font-semibold tabular-nums">{m.v}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {m.l}
+              </p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -174,7 +229,7 @@ function AiDraftPreview() {
   return (
     <PreviewChrome
       title="AI response drafts"
-      meta="Tuned to your brand voice"
+      meta="Sample data"
       accent="primary"
     >
       <div className="space-y-2">
@@ -199,6 +254,129 @@ function AiDraftPreview() {
   );
 }
 
+function ReviewRequestPreview() {
+  return (
+    <PreviewChrome
+      title="Review request campaign"
+      meta="Sample data"
+      accent="primary"
+    >
+      <div className="space-y-3 text-sm">
+        <div className="flex items-center justify-between">
+          <p className="font-medium text-foreground">Spring happy-customers list</p>
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-emerald-700">
+            Sending
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            { v: "128", l: "Sent" },
+            { v: "54", l: "Opened" },
+            { v: "12", l: "New reviews" },
+          ].map((m) => (
+            <div key={m.l} className="rounded-md border bg-card p-2">
+              <p className="text-lg font-semibold tabular-nums">{m.v}</p>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {m.l}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Email · SMS · QR</span>
+            <span>42% open rate</span>
+          </div>
+          <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
+            <div className="h-full w-2/5 rounded-full bg-gradient-to-r from-primary to-brand-cyan" />
+          </div>
+        </div>
+      </div>
+    </PreviewChrome>
+  );
+}
+
+function CompetitorPreview() {
+  const rows = [
+    { name: "You — Main Street Plumbing", rating: 4.7, count: 213, you: true },
+    { name: "Across Town Plumbing", rating: 4.4, count: 318, you: false },
+    { name: "Citywide Rooter", rating: 4.1, count: 156, you: false },
+  ];
+  return (
+    <PreviewChrome
+      title="Competitor snapshot"
+      meta="Sample data"
+      accent="amber"
+    >
+      <div className="space-y-2 text-sm">
+        {rows.map((r) => (
+          <div
+            key={r.name}
+            className={cn(
+              "rounded-md border p-3",
+              r.you ? "border-primary/40 bg-primary/5" : "bg-card",
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span
+                className={cn(
+                  "min-w-0 truncate font-medium",
+                  r.you ? "text-primary" : "text-foreground",
+                )}
+              >
+                {r.name}
+              </span>
+              <span className="shrink-0 tabular-nums">★ {r.rating}</span>
+            </div>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {r.count} reviews
+            </p>
+          </div>
+        ))}
+        <p className="text-[11px] text-muted-foreground">
+          You lead on rating but trail on volume — close the gap with review
+          requests.
+        </p>
+      </div>
+    </PreviewChrome>
+  );
+}
+
+function WeeklyReportPreview() {
+  return (
+    <PreviewChrome title="Weekly report" meta="Sample data" accent="emerald">
+      <div className="space-y-3 text-sm">
+        <p className="text-xs text-muted-foreground">
+          Emailed every Monday — Main Street Plumbing
+        </p>
+        <ul className="space-y-1.5">
+          {[
+            { label: "New reviews", value: "+9", good: true },
+            { label: "Avg rating this week", value: "4.8 ★", good: true },
+            { label: "Replies posted", value: "9 / 9", good: true },
+            { label: "Needs attention", value: "1 review", good: false },
+          ].map((r) => (
+            <li
+              key={r.label}
+              className="flex items-center justify-between rounded-md border bg-card px-3 py-2"
+            >
+              <span className="text-muted-foreground">{r.label}</span>
+              <span
+                className={cn(
+                  "font-semibold tabular-nums",
+                  r.good ? "text-emerald-600" : "text-rose-600",
+                )}
+              >
+                {r.value}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </PreviewChrome>
+  );
+}
+
 function AnalyticsPreview() {
   const bars = [
     { label: "5★", count: 78 },
@@ -211,7 +389,7 @@ function AnalyticsPreview() {
   return (
     <PreviewChrome
       title="Reputation analytics"
-      meta="Sample trend"
+      meta="Sample data"
       accent="emerald"
     >
       <div className="space-y-4">

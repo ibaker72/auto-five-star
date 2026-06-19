@@ -69,19 +69,39 @@ export function AuditForm() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="email">Email *</Label>
+        <Label htmlFor="city">City / location</Label>
         <Input
-          id="email"
-          name="email"
-          type="email"
-          required
-          placeholder="you@yourbusiness.com"
+          id="city"
+          name="city"
+          placeholder="Austin, TX"
         />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="website">Website</Label>
+          <Label htmlFor="email">Email *</Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            required
+            placeholder="you@yourbusiness.com"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone (optional)</Label>
+          <Input
+            id="phone"
+            name="phone"
+            type="tel"
+            placeholder="(555) 123-4567"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="website">Website (if available)</Label>
           <Input
             id="website"
             name="website"
@@ -90,7 +110,7 @@ export function AuditForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="gbp_url">Google Business Profile URL</Label>
+          <Label htmlFor="gbp_url">Google Business Profile (if available)</Label>
           <Input
             id="gbp_url"
             name="gbp_url"
@@ -119,7 +139,13 @@ export function AuditForm() {
         </select>
       </div>
 
-      <Button type="submit" size="lg" disabled={pending}>
+      <Button
+        type="submit"
+        size="lg"
+        variant="brand"
+        className="w-full"
+        disabled={pending}
+      >
         {pending ? "Running your audit…" : "Run my free audit"}
       </Button>
 

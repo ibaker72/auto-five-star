@@ -127,7 +127,7 @@ export async function canUseYelp(orgId: string): Promise<EntitlementCheck> {
     ? { ok: true }
     : {
         ok: false,
-        reason: "Yelp integration requires Growth or Pro.",
+        reason: "Yelp integration requires Growth or Reputation Guard.",
       };
 }
 
@@ -137,7 +137,7 @@ export async function canUseSmsAlerts(
   const plan = await getOrgPlan(orgId);
   return getPlanLimits(plan).smsAlerts
     ? { ok: true }
-    : { ok: false, reason: "SMS alerts require Growth or Pro." };
+    : { ok: false, reason: "SMS alerts require Growth or Reputation Guard." };
 }
 
 export async function canUseBulkActions(
@@ -146,7 +146,7 @@ export async function canUseBulkActions(
   const plan = await getOrgPlan(orgId);
   return getPlanLimits(plan).bulkActions
     ? { ok: true }
-    : { ok: false, reason: "Bulk actions require Pro." };
+    : { ok: false, reason: "Bulk actions require Reputation Guard." };
 }
 
 export async function canSendSmsReviewRequests(
@@ -157,7 +157,7 @@ export async function canSendSmsReviewRequests(
     ? { ok: true }
     : {
         ok: false,
-        reason: "SMS review requests require Growth or Pro.",
+        reason: "SMS review requests require Growth or Reputation Guard.",
       };
 }
 
@@ -169,7 +169,7 @@ export async function canImportCsvReviewRequests(
     ? { ok: true }
     : {
         ok: false,
-        reason: "CSV import is available on Growth and Pro.",
+        reason: "CSV import is available on Growth and Reputation Guard.",
       };
 }
 

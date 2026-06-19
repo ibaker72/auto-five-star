@@ -9,12 +9,12 @@ import { PLAN_CONFIG, PLANS } from "@/lib/billing/plans";
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Starter $49/mo, Growth $99/mo, Pro $199/mo. 14-day free trial. Annual plans get 2 months free.",
+    "Starter $99/mo, Growth $199/mo, Reputation Guard $399/mo. Software plus a done-with-you team. Founding client pricing available.",
   alternates: { canonical: "https://autofivestar.com/pricing" },
   openGraph: {
     title: "AutoFiveStar pricing",
     description:
-      "Simple, owner-friendly pricing. 14-day free trial. Cancel anytime.",
+      "Software plus a team behind your reviews. Cancel anytime. Founding client pricing available.",
     type: "website",
     images: ["/opengraph-image"],
   },
@@ -22,24 +22,28 @@ export const metadata: Metadata = {
 
 const FAQ = [
   {
-    q: "Is there a free trial?",
-    a: "Yes — 14 days on any plan. No charge until day 15. You can cancel from the Stripe Customer Portal at any point.",
+    q: "Is this just software, or do you help?",
+    a: "Both. AutoFiveStar is software plus a service. Growth and Reputation Guard include done-with-you setup, and Reputation Guard adds a monthly strategy call and hands-on response help.",
   },
   {
-    q: "What does the AI cost?",
-    a: "AI usage is included. Starter caps at 50 AI responses per month; Growth and Pro are unlimited.",
+    q: "How does the free review audit work?",
+    a: "Run it from the Free Audit page. We email a score and a punch list in seconds — no credit card required. It's the best way to see the value before you pick a plan.",
   },
   {
-    q: "How does the Free Reputation Audit work?",
-    a: "Run it from the Free Audit page. We send a score and a punch list to your email in seconds. No card required.",
+    q: "Do replies post to Google automatically?",
+    a: "No. We draft on-brand replies, but you review and approve everything before it posts. You always stay in control.",
   },
   {
-    q: "Do you guarantee 5-star reviews?",
-    a: "No. AutoFiveStar helps you respond professionally and consistently. We do not guarantee ratings, rankings, or revenue.",
+    q: "Can I change or cancel plans?",
+    a: "Yes — upgrade, downgrade, or cancel anytime from the billing portal. Annual plans get two months free.",
   },
   {
-    q: "Can I post replies to Yelp?",
-    a: "Yelp does not allow API posting. We pull Yelp reviews read-only on Growth and Pro, and you can copy AI-drafted replies to paste manually.",
+    q: "Do you guarantee five-star reviews?",
+    a: "No. AutoFiveStar helps you respond professionally and request reviews consistently. We do not guarantee ratings, rankings, or revenue.",
+  },
+  {
+    q: "What is founding client pricing?",
+    a: "We're onboarding a first group of local businesses at locked-in launch pricing. Mention it on your setup call and we'll let you know what's available.",
   },
 ];
 
@@ -64,10 +68,14 @@ export default function PricingPage() {
         <BrandGlow intensity="subtle" />
         <div className="container relative mx-auto px-6 pt-20 pb-12 text-center md:pt-28">
           <h1 className="text-balance text-4xl font-bold tracking-tight sm:text-5xl">
-            Simple, <span className="text-brand-gradient">owner-friendly</span> pricing
+            Software <span className="text-brand-gradient">plus a team</span> behind you
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-muted-foreground">
-            14-day free trial. Annual plans get 2 months free. Cancel anytime.
+            Every plan combines the AutoFiveStar app with real help getting it
+            working. Annual plans get two months free. Cancel anytime.
+          </p>
+          <p className="mt-4 inline-block rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
+            Founding client pricing available for the first local businesses.
           </p>
         </div>
       </section>
@@ -77,11 +85,12 @@ export default function PricingPage() {
           {PLANS.map((id) => {
             const plan = PLAN_CONFIG[id];
             const yearly = centsToUsd(plan.priceYearlyCents);
+            const highlighted = id === "growth";
             return (
               <Card
                 key={id}
                 className={
-                  id === "growth"
+                  highlighted
                     ? "ring-brand-glow border-primary/40"
                     : "hover-lift"
                 }
@@ -89,7 +98,7 @@ export default function PricingPage() {
                 <CardHeader>
                   <CardTitle className="text-lg">
                     {plan.name}
-                    {id === "growth" ? (
+                    {highlighted ? (
                       <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-primary">
                         Most popular
                       </span>
@@ -112,7 +121,7 @@ export default function PricingPage() {
                   <Button
                     asChild
                     className="w-full"
-                    variant={id === "growth" ? "brand" : "outline"}
+                    variant={highlighted ? "brand" : "outline"}
                   >
                     <Link href={`/signup?plan=${id}`}>Start 14-day trial</Link>
                   </Button>
@@ -121,20 +130,28 @@ export default function PricingPage() {
             );
           })}
         </div>
+        <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted-foreground">
+          Not ready to start a trial? Run the free review audit first — no card
+          required.
+        </p>
       </section>
 
       <section className="container mx-auto px-6 pb-16">
         <h2 className="text-center text-2xl font-bold tracking-tight">FAQ</h2>
-        <div className="mx-auto mt-8 max-w-3xl space-y-4">
+        <div className="mx-auto mt-8 max-w-3xl space-y-3">
           {FAQ.map(({ q, a }) => (
-            <Card key={q}>
-              <CardHeader>
-                <CardTitle className="text-base">{q}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">
-                {a}
-              </CardContent>
-            </Card>
+            <details
+              key={q}
+              className="group rounded-xl border bg-card p-5 shadow-card-soft"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold tracking-tight [&::-webkit-details-marker]:hidden">
+                {q}
+                <span className="text-primary transition-transform group-open:rotate-45">
+                  +
+                </span>
+              </summary>
+              <p className="mt-3 text-sm text-muted-foreground">{a}</p>
+            </details>
           ))}
         </div>
       </section>
@@ -144,11 +161,14 @@ export default function PricingPage() {
         <div className="container relative mx-auto px-6 py-14 text-center">
           <p className="text-base font-medium">Not sure where to start?</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Run the free reputation audit first.
+            Run the free review audit first — it takes two minutes.
           </p>
-          <div className="mt-4">
-            <Button asChild variant="brand">
+          <div className="mt-4 flex w-full flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button asChild variant="brand" size="lg" className="w-full sm:w-auto">
               <Link href="/free-audit">Start Free Audit</Link>
+            </Button>
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
+              <Link href="/contact?topic=demo">Book Demo</Link>
             </Button>
           </div>
         </div>
