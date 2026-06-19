@@ -19,6 +19,8 @@ export type CreateAuditInput = {
   website?: string | null;
   gbpUrl?: string | null;
   industry?: string | null;
+  city?: string | null;
+  phone?: string | null;
   source?: string | null;
 };
 
@@ -77,6 +79,8 @@ export async function createAudit(
       website: input.website?.trim() || null,
       gbpUrl: input.gbpUrl?.trim() || null,
       industry: input.industry?.trim() || null,
+      city: input.city?.trim() || null,
+      phone: input.phone?.trim() || null,
       source: input.source ?? "website",
     })
     .returning();

@@ -121,6 +121,8 @@ export async function POST(request: NextRequest) {
       website: payload.website || null,
       gbpUrl: payload.gbp_url || null,
       industry: payload.industry || null,
+      city,
+      phone,
       source: payload.source || "website",
     });
   } catch (err) {
@@ -166,8 +168,8 @@ export async function POST(request: NextRequest) {
     website: result.lead.website,
     gbpUrl: result.lead.gbpUrl,
     industry: result.lead.industry,
-    city,
-    phone,
+    city: result.lead.city,
+    phone: result.lead.phone,
     score: result.report.score,
     resultsUrl,
   });

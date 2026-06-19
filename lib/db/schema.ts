@@ -629,6 +629,8 @@ export const auditLeads = pgTable(
     website: text("website"),
     gbpUrl: text("gbp_url"),
     industry: text("industry"),
+    city: text("city"),
+    phone: text("phone"),
     source: text("source"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
