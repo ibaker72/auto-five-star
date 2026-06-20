@@ -72,6 +72,19 @@ export function MarketingFooter() {
               </Link>
             </li>
           </ul>
+          <p className="mt-4 font-medium text-foreground">Legal</p>
+          <ul className="mt-2 space-y-1">
+            <li>
+              <Link href="/privacy" className="hover:text-foreground">
+                Privacy
+              </Link>
+            </li>
+            <li>
+              <Link href="/terms" className="hover:text-foreground">
+                Terms
+              </Link>
+            </li>
+          </ul>
         </div>
       </div>
       <div className="border-t bg-background">

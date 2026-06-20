@@ -112,8 +112,16 @@ export function SignupForm() {
       </Button>
 
       <p className="text-center text-xs text-muted-foreground">
-        By creating an account, you agree that AutoFiveStar helps you respond
-        to reviews. We do not guarantee ratings, rankings, or revenue.
+        By creating an account, you agree to our{" "}
+        <Link href="/terms" className="underline hover:text-foreground">
+          Terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline hover:text-foreground">
+          Privacy Policy
+        </Link>
+        . AutoFiveStar helps you respond to and request reviews — we do not
+        guarantee ratings, rankings, or revenue.
       </p>
 
       <p className="text-center text-sm text-muted-foreground">
