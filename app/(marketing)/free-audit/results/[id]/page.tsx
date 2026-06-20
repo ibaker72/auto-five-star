@@ -2,12 +2,16 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { extractReport, getAuditByRequestId } from "@/lib/audit/leads";
 import { cn } from "@/lib/utils";
 import { TrackedCtas } from "./tracked-ctas";
 
 export const dynamic = "force-dynamic";
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const metadata: Metadata = {
   title: "Your reputation audit",
@@ -16,19 +20,71 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false }, // results are per-lead, don't index
 };
 
+/**
+ * Shown when the URL is a valid audit-result path but we can't load the row
+ * (e.g. an expired/incorrect id). We deliberately render a friendly page
+ * instead of calling notFound() so the prospect gets a clear next step rather
+ * than a bare 404.
+ */
+function AuditNotFound() {
+  return (
+    <section className="container mx-auto px-6 pt-16 pb-16 md:pt-20">
+      <div className="mx-auto max-w-md text-center">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          We couldn&apos;t find this audit result
+        </h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          This audit link may have expired or the address might be incorrect.
+          Run a fresh audit and we&apos;ll generate a new report in about two
+          minutes.
+        </p>
+        <div className="mt-6">
+          <Button asChild size="lg" variant="brand">
+            <Link href="/free-audit">Run a new audit</Link>
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default async function AuditResultsPage({
   params,
 }: {
-  params: { id: string };
+  // Next.js 16: dynamic route params are async and must be awaited.
+  params: Promise<{ id: string }>;
 }) {
-  if (!/^[0-9a-fA-F-]{36}$/.test(params.id)) notFound();
+  const { id } = await params;
 
-  const found = await getAuditByRequestId(params.id);
-  if (!found) notFound();
+  // A malformed id is a genuinely invalid route -> 404.
+  if (!UUID_RE.test(id)) {
+    console.warn(`[free-audit/results] invalid result id: ${JSON.stringify(id)}`);
+    notFound();
+  }
+
+  let found: Awaited<ReturnType<typeof getAuditByRequestId>> = null;
+  try {
+    found = await getAuditByRequestId(id);
+  } catch (err) {
+    // A DB error is not the same as a missing row — log it and fall back to
+    // the friendly page rather than crashing with a 500.
+    console.error(`[free-audit/results] lookup failed for id=${id}`, err);
+    return <AuditNotFound />;
+  }
+
+  if (!found) {
+    console.warn(`[free-audit/results] no audit_requests row for id=${id}`);
+    return <AuditNotFound />;
+  }
 
   const { lead, request } = found;
   const { report, rationale } = extractReport(request);
-  if (!report) notFound();
+  if (!report) {
+    console.warn(
+      `[free-audit/results] audit_requests row ${id} has no report payload`,
+    );
+    return <AuditNotFound />;
+  }
 
   return (
     <section className="container mx-auto px-6 pt-16 pb-16 md:pt-20">

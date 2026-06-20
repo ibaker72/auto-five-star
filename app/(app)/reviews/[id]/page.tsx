@@ -25,10 +25,13 @@ export default async function ReviewDetailPage({
   params,
   searchParams,
 }: {
-  params: { id: string };
-  searchParams: SearchParams;
+  // Next.js 16: params and searchParams are async and must be awaited.
+  params: Promise<{ id: string }>;
+  searchParams: Promise<SearchParams>;
 }) {
   const ctx = await requireOrgContext();
+  const { id } = await params;
+  const search = await searchParams;
 
   const row = await db
     .select({
@@ -38,7 +41,7 @@ export default async function ReviewDetailPage({
     .from(reviews)
     .leftJoin(locationsTable, eq(locationsTable.id, reviews.locationId))
     .where(
-      and(eq(reviews.id, params.id), eq(reviews.orgId, ctx.org.id)),
+      and(eq(reviews.id, id), eq(reviews.orgId, ctx.org.id)),
     )
     .limit(1)
     .then((r) => r[0] ?? null);
@@ -146,7 +149,7 @@ export default async function ReviewDetailPage({
                 used: aiUsed,
                 limit: cfg.monthlyAiResponses,
               }}
-              notice={{ ok: searchParams.ok, error: searchParams.error }}
+              notice={{ ok: search.ok, error: search.error }}
             />
           </CardContent>
         </Card>
