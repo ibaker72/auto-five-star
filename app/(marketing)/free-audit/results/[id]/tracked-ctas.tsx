@@ -1,10 +1,13 @@
 "use client";
 
-import Link from "next/link";
 import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type CtaEvent = "trial_clicked" | "demo_clicked" | "contact_clicked";
+type CtaEvent =
+  | "start_trial_from_audit_results"
+  | "book_call_from_audit_results"
+  | "pricing_from_audit_results";
 
 type Props = {
   requestId: string;
@@ -60,25 +63,34 @@ export function TrackedCtas({ requestId, leadId }: Props) {
         variant="brand"
         className="w-full sm:w-auto"
         disabled={pending}
-        onClick={() => track("trial_clicked", "/signup?plan=growth")}
+        onClick={() =>
+          track("start_trial_from_audit_results", "/signup?plan=growth")
+        }
       >
-        Unlock full review growth plan
+        Start free trial
       </Button>
       <Button
         size="lg"
         variant="outline"
         className="w-full sm:w-auto"
         disabled={pending}
-        onClick={() => track("demo_clicked", "/contact?topic=demo")}
+        onClick={() =>
+          track("book_call_from_audit_results", "/contact?topic=demo")
+        }
       >
-        Book your review growth setup call
+        Book setup call
       </Button>
-      <Link
-        href="/pricing"
-        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => track("pricing_from_audit_results", "/pricing")}
+        className={cn(
+          "text-sm text-muted-foreground underline-offset-4 hover:underline",
+          "disabled:opacity-60",
+        )}
       >
-        See plans &amp; pricing →
-      </Link>
+        See pricing →
+      </button>
     </div>
   );
 }

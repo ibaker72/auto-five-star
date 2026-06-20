@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { BellRing, MessageSquareText, Star } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,85 @@ export const metadata: Metadata = {
     "Your reputation score, strengths, opportunities, and recommendations.",
   robots: { index: false, follow: false }, // results are per-lead, don't index
 };
+
+// Plain-English read on what a score means — used under the score card.
+function scoreBand(score: number): { label: string; blurb: string } {
+  if (score >= 90) {
+    return {
+      label: "Excellent",
+      blurb:
+        "Your reputation is a real competitive advantage. The work now is protecting it — keep reviews fresh and replies fast.",
+    };
+  }
+  if (score >= 75) {
+    return {
+      label: "Strong — but leaving trust on the table",
+      blurb:
+        "You're in good shape, but missed reviews and unanswered replies are leaving trust (and leads) on the table.",
+    };
+  }
+  if (score >= 60) {
+    return {
+      label: "Needs attention",
+      blurb:
+        "Gaps in review volume, recency, or replies are likely making prospects hesitate before they call.",
+    };
+  }
+  return {
+    label: "Likely costing you leads",
+    blurb:
+      "Customers comparing you to a competitor may be choosing them. This is fixable — usually faster than owners expect.",
+  };
+}
+
+// Why the numbers matter, in customer terms. No revenue claims.
+const REVENUE_IMPACT: { title: string; body: string }[] = [
+  {
+    title: "Recent 5-star reviews build trust",
+    body: "Fresh positive reviews reassure people who are comparing you right now.",
+  },
+  {
+    title: "Unanswered reviews cost conversions",
+    body: "Silent profiles look inactive — a visible reply can win back a wavering shopper.",
+  },
+  {
+    title: "Fast replies signal an active business",
+    body: "Responding quickly tells prospects you'll take care of them too.",
+  },
+  {
+    title: "Volume helps you win the comparison",
+    body: "When customers weigh you against a competitor, more reviews tip the choice.",
+  },
+];
+
+// Strong best-practice punch list. Merged with the lead's data-driven
+// recommendations so the section always has a full set of actions.
+const ACTION_ITEMS: string[] = [
+  "Reply to every unanswered review — replies are public and win back wavering shoppers.",
+  "Ask recent happy customers for a review the day of service, while it's fresh.",
+  "Flag urgent or negative reviews fast so you can respond before they spread.",
+  "Keep reviews coming in every month so your profile always looks active.",
+  "Track rating, volume, recency, and reply rate weekly — not once a year.",
+  "Use AI drafts to move fast, but approve every reply before it posts.",
+];
+
+const WHAT_WE_DO: { icon: typeof Star; title: string; body: string }[] = [
+  {
+    icon: MessageSquareText,
+    title: "Drafts replies in your brand voice",
+    body: "On-brand responses to every review in seconds — you approve before anything posts.",
+  },
+  {
+    icon: BellRing,
+    title: "Flags reviews that need urgent attention",
+    body: "Negative or time-sensitive reviews get surfaced so nothing slips through.",
+  },
+  {
+    icon: Star,
+    title: "Helps you request more 5-star reviews",
+    body: "A steady, automated cadence that asks happy customers at the right moment.",
+  },
+];
 
 /**
  * Shown when the URL is a valid audit-result path but we can't load the row
@@ -86,6 +166,13 @@ export default async function AuditResultsPage({
     return <AuditNotFound />;
   }
 
+  const band = scoreBand(report.score);
+  // Lead with the lead's own data-driven recommendations, then fill out the
+  // punch list with best-practice actions. Dedupe exact repeats, cap at 6.
+  const actionPlan = [...report.recommendations, ...ACTION_ITEMS]
+    .filter((item, i, arr) => arr.indexOf(item) === i)
+    .slice(0, 6);
+
   return (
     <section className="container mx-auto px-6 pt-16 pb-16 md:pt-20">
       <div className="mx-auto max-w-3xl">
@@ -102,6 +189,10 @@ export default async function AuditResultsPage({
             </span>
           ) : null}
         </div>
+        <p className="mt-3 max-w-2xl text-base text-muted-foreground sm:text-lg">
+          Your review profile is costing or winning trust before customers ever
+          call. Here&apos;s where {lead.businessName} stands today.
+        </p>
 
         {request.demoMode ? (
           <Alert className="mt-6">
@@ -119,7 +210,7 @@ export default async function AuditResultsPage({
           <Card className="md:col-span-2">
             <CardHeader className="pb-2">
               <CardDescription>Reputation score</CardDescription>
-              <CardTitle className="flex items-baseline gap-3">
+              <CardTitle className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <span className="text-5xl font-semibold tabular-nums">
                   {report.score}
                 </span>
@@ -146,6 +237,14 @@ export default async function AuditResultsPage({
                 rating quality (40), volume (20), recency (20), and response
                 rate (20).
               </p>
+              <div className="mt-4 rounded-md bg-secondary/60 p-3">
+                <p className="text-sm font-semibold text-foreground">
+                  {report.score}/100 · {band.label}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {band.blurb}
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -202,6 +301,34 @@ export default async function AuditResultsPage({
 
         <Card className="mt-6">
           <CardHeader>
+            <CardTitle className="text-lg">
+              What your reputation is worth
+            </CardTitle>
+            <CardDescription>
+              Why these numbers matter for the customers deciding right now.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {REVENUE_IMPACT.map((item) => (
+                <div key={item.title}>
+                  <p className="text-sm font-semibold text-foreground">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {item.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 text-sm font-medium text-foreground">
+              Even a small lift in trust can turn more searches into calls.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-6">
+          <CardHeader>
             <CardTitle className="text-lg">What to do next</CardTitle>
             <CardDescription>
               A short, opinionated punch list. AutoFiveStar handles most of
@@ -210,11 +337,9 @@ export default async function AuditResultsPage({
           </CardHeader>
           <CardContent>
             <ol className="space-y-2 text-sm text-muted-foreground">
-              {report.recommendations.map((r, i) => (
+              {actionPlan.map((r, i) => (
                 <li key={r}>
-                  <span className="font-medium text-foreground">
-                    {i + 1}.
-                  </span>{" "}
+                  <span className="font-medium text-foreground">{i + 1}.</span>{" "}
                   {r}
                 </li>
               ))}
@@ -222,21 +347,45 @@ export default async function AuditResultsPage({
           </CardContent>
         </Card>
 
-        <section className="mt-10 rounded-md border bg-primary/5 p-6 text-center">
+        <section className="mt-10">
           <h2 className="text-xl font-bold tracking-tight">
+            What AutoFiveStar does for you
+          </h2>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            We turn this snapshot into an ongoing system — set up with you.
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {WHAT_WE_DO.map((item) => (
+              <Card key={item.title} className="h-full">
+                <CardHeader className="pb-2">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <item.icon className="h-5 w-5" />
+                  </span>
+                  <CardTitle className="mt-3 text-base">{item.title}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">
+                  {item.body}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-10 rounded-md border bg-primary/5 p-6 text-center sm:p-8">
+          <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
             Ready to turn this into real review growth?
           </h2>
           <p className="mx-auto mt-2 max-w-xl text-sm text-muted-foreground">
-            We&apos;ll connect your Google Business Profile, draft on-brand
-            replies for every review, flag urgent ones instantly, and help you
-            request more five-star reviews — set up with you.
+            {request.demoMode
+              ? "Connect your Google Business Profile and we'll replace this sample with your real review health, reply gaps, urgent reviews, and a weekly action plan."
+              : "Start your plan and we'll handle replies, surface urgent reviews, and help you request more 5-star reviews — set up with you."}
           </p>
-          <div className="mt-4">
+          <div className="mt-5">
             <TrackedCtas requestId={request.id} leadId={lead.id} />
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-4 text-[11px] text-muted-foreground">
             We also emailed this report to {lead.email}.{" "}
-            <Link href="/free-audit" className="underline">
+            <Link href="/free-audit" className="underline underline-offset-2">
               Run another audit
             </Link>
             .
