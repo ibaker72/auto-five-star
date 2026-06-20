@@ -71,14 +71,14 @@ const REVENUE_IMPACT: { title: string; body: string }[] = [
   },
 ];
 
-// Strong best-practice punch list. Merged with the lead's data-driven
-// recommendations so the section always has a full set of actions.
+// Curated best-practice punch list. A single, deterministic set of actions so
+// the section never repeats itself (e.g. two "ask for reviews" items).
 const ACTION_ITEMS: string[] = [
   "Reply to every unanswered review — replies are public and win back wavering shoppers.",
   "Ask recent happy customers for a review the day of service, while it's fresh.",
   "Flag urgent or negative reviews fast so you can respond before they spread.",
   "Keep reviews coming in every month so your profile always looks active.",
-  "Track rating, volume, recency, and reply rate weekly — not once a year.",
+  "Track your weekly review momentum so you know whether trust is improving or slipping.",
   "Use AI drafts to move fast, but approve every reply before it posts.",
 ];
 
@@ -158,7 +158,7 @@ export default async function AuditResultsPage({
   }
 
   const { lead, request } = found;
-  const { report, rationale } = extractReport(request);
+  const { report } = extractReport(request);
   if (!report) {
     console.warn(
       `[free-audit/results] audit_requests row ${id} has no report payload`,
@@ -167,11 +167,6 @@ export default async function AuditResultsPage({
   }
 
   const band = scoreBand(report.score);
-  // Lead with the lead's own data-driven recommendations, then fill out the
-  // punch list with best-practice actions. Dedupe exact repeats, cap at 6.
-  const actionPlan = [...report.recommendations, ...ACTION_ITEMS]
-    .filter((item, i, arr) => arr.indexOf(item) === i)
-    .slice(0, 6);
 
   return (
     <section className="container mx-auto px-6 pt-16 pb-16 md:pt-20">
@@ -185,7 +180,7 @@ export default async function AuditResultsPage({
           </h1>
           {request.demoMode ? (
             <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-amber-700">
-              Sample preview
+              Preview Audit
             </span>
           ) : null}
         </div>
@@ -196,12 +191,12 @@ export default async function AuditResultsPage({
 
         {request.demoMode ? (
           <Alert className="mt-6">
-            <AlertTitle>
-              This is a sample preview — connect to see your live numbers
-            </AlertTitle>
+            <AlertTitle>Connect to unlock your live review data</AlertTitle>
             <AlertDescription>
-              {rationale ??
-                "We can't read your live Google reviews until you connect your Business Profile, so this first report uses representative sample data. Start your plan to see your real score, reviews, and competitor gap."}
+              This preview uses available reputation signals and sample
+              benchmarks. Connect your Google Business Profile to unlock your
+              live review data, reply gaps, urgent reviews, and weekly action
+              plan.
             </AlertDescription>
           </Alert>
         ) : null}
@@ -337,7 +332,7 @@ export default async function AuditResultsPage({
           </CardHeader>
           <CardContent>
             <ol className="space-y-2 text-sm text-muted-foreground">
-              {actionPlan.map((r, i) => (
+              {ACTION_ITEMS.map((r, i) => (
                 <li key={r}>
                   <span className="font-medium text-foreground">{i + 1}.</span>{" "}
                   {r}
