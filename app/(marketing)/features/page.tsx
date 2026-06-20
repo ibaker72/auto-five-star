@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Features",
   description:
     "Review monitoring, AI-powered replies, analytics, and bulk actions. Built for HVAC, dentists, restaurants, and other local businesses.",
-  alternates: { canonical: "https://autofivestar.com/features" },
+  alternates: { canonical: "https://www.autofivestar.com/features" },
   openGraph: {
     title: "AutoFiveStar features",
     description:

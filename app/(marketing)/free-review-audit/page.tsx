@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: "Free Review Audit for Local Businesses",
   description:
     "A free review audit for local businesses: your review score, bad review risk, competitor rating gap, and a punch list of what to fix first. No credit card.",
-  alternates: { canonical: "https://autofivestar.com/free-review-audit" },
+  alternates: { canonical: "https://www.autofivestar.com/free-review-audit" },
   openGraph: {
     title: "Free Review Audit for Local Businesses",
     description:

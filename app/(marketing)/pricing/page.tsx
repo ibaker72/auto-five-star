@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: "Pricing",
   description:
     "Starter $99/mo, Growth $199/mo, Reputation Guard $399/mo. Software plus a done-with-you team. Founding client pricing available.",
-  alternates: { canonical: "https://autofivestar.com/pricing" },
+  alternates: { canonical: "https://www.autofivestar.com/pricing" },
   openGraph: {
     title: "AutoFiveStar pricing",
     description:
@@ -132,7 +132,15 @@ export default function PricingPage() {
         </div>
         <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted-foreground">
           Not ready to start a trial? Run the free review audit first — no card
-          required.
+          required. Cancel anytime. By starting a trial you agree to our{" "}
+          <Link href="/terms" className="underline hover:text-foreground">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+          . We do not guarantee ratings, rankings, or revenue.
         </p>
       </section>
 

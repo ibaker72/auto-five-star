@@ -5,19 +5,20 @@ export const metadata: Metadata = {
   title: "Contact",
   description:
     "Talk to the AutoFiveStar team about a demo, your account, or sales.",
-  alternates: { canonical: "https://autofivestar.com/contact" },
+  alternates: { canonical: "https://www.autofivestar.com/contact" },
 };
 
 const SUPPORT = "support@autofivestar.com";
 
 type SearchParams = { topic?: string };
 
-export default function ContactPage({
+export default async function ContactPage({
   searchParams,
 }: {
-  searchParams: SearchParams;
+  // Next.js 16: searchParams is async and must be awaited.
+  searchParams: Promise<SearchParams>;
 }) {
-  const topic = searchParams.topic ?? "general";
+  const { topic = "general" } = await searchParams;
   return (
     <section className="container mx-auto px-6 pt-16 pb-16 md:pt-20">
       <div className="mx-auto max-w-2xl text-center">

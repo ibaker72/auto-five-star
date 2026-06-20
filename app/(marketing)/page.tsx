@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     title: "AutoFiveStar — Review Growth Engine",
     description:
       "Instant review alerts, AI-powered replies, review-request automation, and analytics for local businesses.",
-    url: "https://autofivestar.com",
+    url: "https://www.autofivestar.com",
     siteName: "AutoFiveStar",
     type: "website",
     images: ["/opengraph-image"],
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
       "AI-powered review replies plus review-request automation for local businesses. Start your free review audit.",
     images: ["/twitter-image"],
   },
-  alternates: { canonical: "https://autofivestar.com/" },
+  alternates: { canonical: "https://www.autofivestar.com/" },
 };
 
 const FAQ = [
@@ -81,12 +81,52 @@ const faqSchema = {
   })),
 };
 
+const SITE_URL = "https://www.autofivestar.com";
+
+const orgSchema = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: "AutoFiveStar",
+      url: SITE_URL,
+      email: "support@autofivestar.com",
+      description:
+        "AI review replies and review-request automation for local businesses.",
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      url: SITE_URL,
+      name: "AutoFiveStar",
+      publisher: { "@id": `${SITE_URL}/#organization` },
+    },
+    {
+      "@type": "SoftwareApplication",
+      name: "AutoFiveStar",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      url: SITE_URL,
+      offers: {
+        "@type": "Offer",
+        price: "99",
+        priceCurrency: "USD",
+      },
+    },
+  ],
+};
+
 export default function HomePage() {
   return (
     <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
       />
       <Hero />
       <DemoSection />

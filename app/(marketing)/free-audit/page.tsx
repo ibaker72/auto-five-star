@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   title: "Free Reputation Audit",
   description:
     "Get a free reputation score for your local business in two minutes. We email a score, strengths, opportunities, and a punch list.",
-  alternates: { canonical: "https://autofivestar.com/free-audit" },
+  alternates: { canonical: "https://www.autofivestar.com/free-audit" },
   openGraph: {
     title: "Free reputation audit",
     description:

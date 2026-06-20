@@ -11,9 +11,9 @@ export const metadata: Metadata = {
     "AI review response and review growth engine for local businesses. Instant review alerts, AI-powered replies, review-request automation, and analytics.",
   applicationName: "AutoFiveStar",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://autofivestar.com",
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://www.autofivestar.com",
   ),
-  alternates: { canonical: "https://autofivestar.com" },
+  alternates: { canonical: "https://www.autofivestar.com" },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     siteName: "AutoFiveStar",
     type: "website",
-    url: "https://autofivestar.com",
+    url: "https://www.autofivestar.com",
     title: "AutoFiveStar — Review growth engine for local businesses",
     description:
       "AI review response and review growth engine for local businesses.",
