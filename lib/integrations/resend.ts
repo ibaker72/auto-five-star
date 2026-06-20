@@ -130,7 +130,7 @@ export async function sendNewReviewAlertEmail(
       </p>
       <p style="color:#888; font-size:12px; margin-top:24px;">
         You're receiving this because review alerts are enabled. Update preferences in
-        <a href="https://autofivestar.com/settings" style="color:#888;">your settings</a>.
+        <a href="https://www.autofivestar.com/settings" style="color:#888;">your settings</a>.
       </p>
     </div>
   `;
