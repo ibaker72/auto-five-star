@@ -92,7 +92,7 @@ export function PlanCards({ currentPlan, hasActiveSubscription }: Props) {
                       variant={isCurrent ? "secondary" : "default"}
                       className="w-full"
                     >
-                      {hasActiveSubscription ? "Switch to " + plan.name : "Start 14-day trial"}
+                      {hasActiveSubscription ? "Switch to " + plan.name : "Start 7-day trial"}
                     </Button>
                   </form>
                 )}

@@ -95,7 +95,7 @@ export async function createCheckoutSession(params: {
     customer: params.customerId,
     line_items: [{ price: params.priceId, quantity: 1 }],
     subscription_data: {
-      trial_period_days: params.trialDays ?? 14,
+      trial_period_days: params.trialDays ?? 7,
       metadata,
     },
     success_url: params.successUrl,

@@ -22,7 +22,7 @@ export default function SignupPage() {
           <CardHeader>
             <CardTitle>Never leave another review unanswered</CardTitle>
             <CardDescription>
-              14-day free trial. No charge until day 15.
+              7-day free trial. No charge until day 8.
             </CardDescription>
           </CardHeader>
           <CardContent>

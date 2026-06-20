@@ -100,8 +100,8 @@ export default async function BillingPage({
               </>
             ) : (
               <p>
-                Pick a plan below to start your 14-day free trial. You won't be
-                charged until day 15.
+                Pick a plan below to start your 7-day free trial. You won't be
+                charged until day 8.
               </p>
             )}
           </CardContent>

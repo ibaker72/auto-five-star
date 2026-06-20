@@ -103,7 +103,7 @@ export default function FeaturesPage() {
               <Link href="/free-audit">Start Free Audit</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/signup">Start 14-day trial</Link>
+              <Link href="/signup">Start 7-day trial</Link>
             </Button>
           </div>
         </div>

@@ -406,7 +406,7 @@ In the Supabase dashboard:
 | Growth  | $99      | 3         | Unlimited    | Google + Yelp (read) |
 | Pro     | $199     | 10        | Unlimited    | All + API + bulk     |
 
-14-day free trial, card required. Annual = 2 months free.
+Starter and Growth: 7-day free trial, card required. Reputation Guard is hands-on and starts with a setup call. Annual = 2 months free.
 
 ## Docs
 

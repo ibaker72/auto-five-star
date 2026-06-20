@@ -88,7 +88,7 @@ export function SignupForm() {
           </p>
         </div>
         <Button type="submit" className="w-full" disabled={pending}>
-          {pending ? "Creating account…" : "Start 14-day free trial"}
+          {pending ? "Creating account…" : "Start 7-day free trial"}
         </Button>
       </form>
 

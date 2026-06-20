@@ -123,7 +123,11 @@ export default function PricingPage() {
                     className="w-full"
                     variant={highlighted ? "brand" : "outline"}
                   >
-                    <Link href={`/signup?plan=${id}`}>Start 14-day trial</Link>
+                    {id === "pro" ? (
+                      <Link href="/contact?topic=demo">Book setup call</Link>
+                    ) : (
+                      <Link href={`/signup?plan=${id}`}>Start 7-day trial</Link>
+                    )}
                   </Button>
                 </CardContent>
               </Card>
@@ -132,7 +136,9 @@ export default function PricingPage() {
         </div>
         <p className="mx-auto mt-6 max-w-2xl text-center text-xs text-muted-foreground">
           Not ready to start a trial? Run the free review audit first — no card
-          required. Cancel anytime. By starting a trial you agree to our{" "}
+          required. Starter and Growth include a 7-day trial with setup support.
+          Reputation Guard is hands-on and starts with a setup call. Cancel
+          anytime. By starting a trial you agree to our{" "}
           <Link href="/terms" className="underline hover:text-foreground">
             Terms
           </Link>{" "}

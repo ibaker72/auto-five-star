@@ -80,7 +80,7 @@ export const PLAN_CONFIG: Record<Plan, PlanConfig> = {
   },
 };
 
-export const TRIAL_DAYS = 14;
+export const TRIAL_DAYS = 7;
 
 export function isPlan(value: unknown): value is Plan {
   return typeof value === "string" && (PLANS as readonly string[]).includes(value);
