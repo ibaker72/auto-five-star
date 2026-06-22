@@ -32,6 +32,10 @@ const serverSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+  // Google Places API (New) key for the public free-audit lookup. Optional:
+  // when missing, the audit gracefully falls back to sample/demo mode. Server
+  // only — never exposed to the client.
+  GOOGLE_PLACES_API_KEY: z.string().optional(),
 
   // OpenAI
   OPENAI_API_KEY: z.string().optional(), // optional when AI_LIVE=false

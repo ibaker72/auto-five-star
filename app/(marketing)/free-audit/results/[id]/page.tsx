@@ -248,17 +248,155 @@ export default async function AuditResultsPage({
               <CardDescription>Breakdown</CardDescription>
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
-              <Row label="Rating" value={report.breakdown.rating} max={40} />
-              <Row label="Volume" value={report.breakdown.volume} max={20} />
-              <Row label="Recency" value={report.breakdown.recency} max={20} />
-              <Row
-                label="Response rate"
-                value={report.breakdown.response}
-                max={20}
-              />
+              {report.breakdownItems && report.breakdownItems.length > 0 ? (
+                report.breakdownItems.map((item) => (
+                  <Row
+                    key={item.label}
+                    label={item.label}
+                    value={item.value}
+                    max={item.max}
+                  />
+                ))
+              ) : (
+                <>
+                  <Row label="Rating" value={report.breakdown.rating} max={40} />
+                  <Row label="Volume" value={report.breakdown.volume} max={20} />
+                  <Row
+                    label="Recency"
+                    value={report.breakdown.recency}
+                    max={20}
+                  />
+                  <Row
+                    label="Response rate"
+                    value={report.breakdown.response}
+                    max={20}
+                  />
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
+
+        {!request.demoMode &&
+        (lead.googleRating !== null || lead.googleReviewCount !== null) ? (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Your Google rating</CardDescription>
+                <CardTitle className="flex items-baseline gap-2">
+                  <span className="text-3xl font-semibold tabular-nums">
+                    {lead.googleRating !== null
+                      ? lead.googleRating.toFixed(1)
+                      : "—"}
+                  </span>
+                  <span className="text-amber-500">
+                    {"★".repeat(Math.round(lead.googleRating ?? 0))}
+                    {"☆".repeat(5 - Math.round(lead.googleRating ?? 0))}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                Pulled live from your public Google Business Profile.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardDescription>Total Google reviews</CardDescription>
+                <CardTitle className="text-3xl font-semibold tabular-nums">
+                  {lead.googleReviewCount !== null
+                    ? lead.googleReviewCount.toLocaleString()
+                    : "—"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                The more recent reviews you have, the more you win the
+                comparison.
+              </CardContent>
+            </Card>
+          </div>
+        ) : null}
+
+        {report.competitors && report.competitors.competitors.length > 0 ? (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg">How you compare</CardTitle>
+              <CardDescription>
+                {lead.businessName} vs. nearby competitors we found on Google.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="pb-2 pr-4 font-medium">Business</th>
+                      <th className="pb-2 pr-4 font-medium">Rating</th>
+                      <th className="pb-2 font-medium">Reviews</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    <tr className="font-medium text-primary">
+                      <td className="py-2 pr-4">{lead.businessName} (you)</td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {lead.googleRating !== null
+                          ? lead.googleRating.toFixed(1)
+                          : "—"}
+                      </td>
+                      <td className="py-2 tabular-nums">
+                        {lead.googleReviewCount !== null
+                          ? lead.googleReviewCount.toLocaleString()
+                          : "—"}
+                      </td>
+                    </tr>
+                    {report.competitors.competitors.map((c, i) => (
+                      <tr key={`${c.name}-${i}`}>
+                        <td className="py-2 pr-4">{c.name}</td>
+                        <td className="py-2 pr-4 tabular-nums">
+                          {c.rating !== null ? c.rating.toFixed(1) : "—"}
+                        </td>
+                        <td className="py-2 tabular-nums">
+                          {c.reviewCount !== null
+                            ? c.reviewCount.toLocaleString()
+                            : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {report.competitors.ratingGap !== null ? (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  {report.competitors.ratingGap >= 0
+                    ? `You're ahead of the local average by ${report.competitors.ratingGap.toFixed(1)} stars. Keep it up by staying responsive and asking for fresh reviews.`
+                    : `You're ${Math.abs(report.competitors.ratingGap).toFixed(1)} stars behind the local average — closing that gap is exactly what AutoFiveStar is built for.`}
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        {report.recommendations.length > 0 ? (
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle className="text-lg">Your top 3 fixes</CardTitle>
+              <CardDescription>
+                The highest-leverage moves for {lead.businessName} right now.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ol className="space-y-2 text-sm text-muted-foreground">
+                {report.recommendations.slice(0, 3).map((r, i) => (
+                  <li key={r}>
+                    <span className="font-medium text-foreground">
+                      {i + 1}.
+                    </span>{" "}
+                    {r}
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+        ) : null}
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <Card>

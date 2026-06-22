@@ -27,9 +27,33 @@ export type ReputationReport = {
     recency: number;
     response: number;
   };
+  /**
+   * Generic, ordered breakdown for rendering. Present on real (public-data)
+   * audits where only a subset of dimensions is measurable from public Google
+   * data. When absent, consumers fall back to the fixed 4-dimension layout.
+   */
+  breakdownItems?: Array<{ label: string; value: number; max: number }>;
   strengths: string[];
   opportunities: string[];
   recommendations: string[];
+  /** Where the underlying numbers came from. */
+  dataSource?: "google_places" | "sample";
+  /** Competitor comparison, when we could find nearby competitors. */
+  competitors?: CompetitorComparison;
+};
+
+export type CompetitorStat = {
+  name: string;
+  rating: number | null;
+  reviewCount: number | null;
+};
+
+export type CompetitorComparison = {
+  competitors: CompetitorStat[];
+  avgRating: number | null;
+  avgReviewCount: number | null;
+  /** Your rating minus the competitor average (positive = you're ahead). */
+  ratingGap: number | null;
 };
 
 const RATING_WEIGHT = 40;
@@ -165,6 +189,178 @@ export function computeReputationReport(
     strengths,
     opportunities,
     recommendations,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Real (public-data) audit
+// ---------------------------------------------------------------------------
+
+export type PublicAuditInputs = {
+  averageRating: number | null; // 0..5 from Google Places
+  reviewCount: number; // userRatingCount from Google Places
+};
+
+// Google Places exposes rating + review volume but not reply/recency data for
+// an unauthenticated prospect, so the public score is re-weighted across only
+// the two dimensions we can actually measure: rating quality (60) and review
+// volume (40). The full 4-dimension score unlocks once they connect GBP.
+const PUBLIC_RATING_WEIGHT = 60;
+const PUBLIC_VOLUME_WEIGHT = 40;
+
+/**
+ * Build a competitor comparison from raw competitor stats. Pure function.
+ */
+export function buildCompetitorComparison(
+  competitors: CompetitorStat[],
+  yourRating: number | null,
+): CompetitorComparison {
+  const withRating = competitors.filter(
+    (c): c is CompetitorStat & { rating: number } => c.rating !== null,
+  );
+  const withCount = competitors.filter(
+    (c): c is CompetitorStat & { reviewCount: number } =>
+      c.reviewCount !== null,
+  );
+
+  const avgRating =
+    withRating.length > 0
+      ? Number(
+          (
+            withRating.reduce((s, c) => s + c.rating, 0) / withRating.length
+          ).toFixed(2),
+        )
+      : null;
+  const avgReviewCount =
+    withCount.length > 0
+      ? Math.round(
+          withCount.reduce((s, c) => s + c.reviewCount, 0) / withCount.length,
+        )
+      : null;
+
+  const ratingGap =
+    yourRating !== null && avgRating !== null
+      ? Number((yourRating - avgRating).toFixed(2))
+      : null;
+
+  return {
+    competitors,
+    avgRating,
+    avgReviewCount,
+    ratingGap,
+  };
+}
+
+/**
+ * Compute a reputation report from real Google Places data. Pure function.
+ *
+ * Unlike the seeded sample report, this scores only what public data can tell
+ * us (rating + volume), re-weighted to 100, and folds in competitor-aware
+ * strengths/opportunities when a comparison is available. No revenue or
+ * ranking claims — consistent with the rest of the audit copy.
+ */
+export function computeRealReputationReport(
+  inputs: PublicAuditInputs,
+  options: { comparison?: CompetitorComparison } = {},
+): ReputationReport {
+  const hasReviews = inputs.reviewCount > 0 && inputs.averageRating !== null;
+  const ratingFraction = hasReviews
+    ? clamp01((inputs.averageRating ?? 0) / 5)
+    : 0;
+  const volumeFraction = clamp01(inputs.reviewCount / VOLUME_TARGET);
+
+  const ratingPts = Math.round(ratingFraction * PUBLIC_RATING_WEIGHT);
+  const volumePts = Math.round(volumeFraction * PUBLIC_VOLUME_WEIGHT);
+  const score = Math.min(100, ratingPts + volumePts);
+
+  const strengths: string[] = [];
+  const opportunities: string[] = [];
+  const recommendations: string[] = [];
+
+  if (ratingFraction >= 0.9) {
+    strengths.push(
+      "Your Google rating signals strong customer satisfaction.",
+    );
+  } else if (hasReviews && ratingFraction < 0.8) {
+    opportunities.push(
+      "Your average rating has room to grow — a steady trickle of fresh 5-star reviews moves it quickly.",
+    );
+    recommendations.push(
+      "Ask happy customers to leave a Google review the day of service while the experience is fresh.",
+    );
+  }
+
+  if (volumeFraction >= 0.5) {
+    strengths.push("You have a healthy volume of public reviews.");
+  } else if (hasReviews) {
+    opportunities.push(
+      "Review volume is below the local-business benchmark — more reviews help you win the comparison.",
+    );
+    recommendations.push(
+      "Set a weekly review-request cadence (email + SMS) tied to job or appointment completion.",
+    );
+  }
+
+  // Competitor-aware insights.
+  const comparison = options.comparison;
+  if (comparison) {
+    if (comparison.ratingGap !== null) {
+      if (comparison.ratingGap >= 0.2) {
+        strengths.push(
+          `You're rated higher than nearby competitors (avg ${comparison.avgRating?.toFixed(1)}). Make that advantage visible.`,
+        );
+      } else if (comparison.ratingGap <= -0.2) {
+        opportunities.push(
+          `Nearby competitors average ${comparison.avgRating?.toFixed(1)} stars — closing that gap helps you win shoppers comparing you side by side.`,
+        );
+      }
+    }
+    if (
+      comparison.avgReviewCount !== null &&
+      comparison.avgReviewCount > inputs.reviewCount
+    ) {
+      opportunities.push(
+        `Competitors average ${comparison.avgReviewCount} reviews to your ${inputs.reviewCount}. More recent reviews make your profile the obvious choice.`,
+      );
+      recommendations.push(
+        "Run a 30-day push asking recent customers for a quick review to close the volume gap.",
+      );
+    }
+  }
+
+  // Always surface the reply opportunity — it's the core of what we do and is
+  // unmeasurable from public data, so we frame it as an unlock.
+  recommendations.push(
+    "Reply to every review — public replies build trust and win back wavering shoppers. Connect your profile to see reply gaps.",
+  );
+
+  if (!hasReviews) {
+    opportunities.unshift(
+      "We couldn't read any public reviews for this profile yet — the score is a baseline you can grow from.",
+    );
+    recommendations.unshift(
+      "Make sure your Google Business Profile is claimed and verified, then start asking customers for reviews.",
+    );
+  }
+
+  return {
+    score,
+    grade: gradeFor(score),
+    breakdown: {
+      rating: Math.round(ratingFraction * RATING_WEIGHT),
+      volume: Math.round(volumeFraction * VOLUME_WEIGHT),
+      recency: 0,
+      response: 0,
+    },
+    breakdownItems: [
+      { label: "Rating quality", value: ratingPts, max: PUBLIC_RATING_WEIGHT },
+      { label: "Review volume", value: volumePts, max: PUBLIC_VOLUME_WEIGHT },
+    ],
+    strengths,
+    opportunities,
+    recommendations,
+    dataSource: "google_places",
+    competitors: comparison,
   };
 }
 

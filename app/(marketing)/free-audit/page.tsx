@@ -74,10 +74,9 @@ export default function FreeAuditPage() {
           </Card>
 
           <p className="mt-4 text-center text-xs text-muted-foreground">
-            We can&apos;t read live Google reviews for non-customers yet, so your
-            first report uses a representative sample clearly labeled
-            &ldquo;sample preview.&rdquo; Start a plan to connect your profile
-            and see your live numbers.
+            We pull your public Google rating, review count, and nearby
+            competitors when we can find your profile. Connect your account on a
+            plan to unlock reply gaps, review recency, and a weekly action plan.
           </p>
         </div>
       </div>
