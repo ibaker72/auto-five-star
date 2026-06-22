@@ -7,6 +7,7 @@ import {
 import { sendReviewAlerts } from "@/lib/inngest/functions/sendAlerts";
 import { weeklyDigest } from "@/lib/inngest/functions/weeklyDigest";
 import { auditFollowupSequence } from "@/lib/inngest/functions/auditFollowup";
+import { dripCampaignScheduler } from "@/lib/inngest/functions/dripCampaigns";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,5 +20,6 @@ export const { GET, POST, PUT } = serve({
     sendReviewAlerts,
     weeklyDigest,
     auditFollowupSequence,
+    dripCampaignScheduler,
   ],
 });

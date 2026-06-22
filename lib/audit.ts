@@ -25,6 +25,7 @@ export type AuditAction =
   | "review.skipped"
   | "review.flagged"
   | "review_request.sent"
+  | "review_request.scheduled"
   | "review_request.failed"
   | "review_request.campaign.created"
   | "review_request.qr.generated"
