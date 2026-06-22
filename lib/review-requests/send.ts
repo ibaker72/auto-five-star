@@ -73,10 +73,12 @@ export async function sendReviewRequest(
     });
   }
 
+  const trackedReviewUrl = buildTrackedReviewUrl(params.recipientId);
+
   const body = renderTemplate(params.messageTemplate, {
     customerName: customer.name,
     businessName: params.businessName,
-    reviewUrl: params.reviewUrl,
+    reviewUrl: trackedReviewUrl,
   });
 
   if (channel === "email" && customer.email) {
@@ -197,6 +199,11 @@ export function describeSendEnvironment(): {
   isProd: boolean;
 } {
   return { emailLive: EMAIL_LIVE, smsLive: SMS_LIVE, isProd: IS_PROD };
+}
+
+function buildTrackedReviewUrl(recipientId: string): string {
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return `${base}/r/${recipientId}`;
 }
 
 function emailHtml(body: string, businessName: string): string {

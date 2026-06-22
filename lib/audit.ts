@@ -27,7 +27,8 @@ export type AuditAction =
   | "review_request.sent"
   | "review_request.failed"
   | "review_request.campaign.created"
-  | "review_request.qr.generated";
+  | "review_request.qr.generated"
+  | "competitor.snapshot_added";
 
 export async function writeAudit(params: {
   orgId: string;

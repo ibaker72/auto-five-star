@@ -24,6 +24,7 @@ function isPublicRoute(pathname: string): boolean {
   if (pathname.startsWith("/auth/")) return true;
   if (pathname.startsWith("/api/auth/")) return true;
   if (pathname.startsWith("/monitoring")) return true;
+  if (pathname.startsWith("/r/")) return true;
   return false;
 }
 
