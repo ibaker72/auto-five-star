@@ -17,6 +17,7 @@ import {
 import { validateTemplate } from "@/lib/review-requests/templates";
 import { getOrgName, sendReviewRequest } from "@/lib/review-requests/send";
 import { validateReviewUrl } from "@/lib/review-requests/qr";
+import { buildSchedule, campaignDaySpan } from "@/lib/review-requests/schedule";
 import { writeAudit } from "@/lib/audit";
 
 const channelSchema = z.enum(["email", "sms", "both"]);
@@ -214,6 +215,10 @@ const csvImportSchema = z.object({
   campaign_name: z.string().trim().min(1).max(120),
   rows_json: z.string().min(2),
   confirm: z.literal("yes"),
+  // Scheduling (drip campaigns). Defaults preserve immediate-send behavior.
+  send_mode: z.enum(["immediate", "scheduled"]).default("immediate"),
+  daily_limit: z.coerce.number().int().positive().max(1000).optional(),
+  start_at: z.string().trim().optional().or(z.literal("")),
 });
 
 type CsvRow = {
@@ -245,6 +250,9 @@ export async function importCsvCampaign(
     campaign_name: formData.get("campaign_name") ?? "",
     rows_json: formData.get("rows_json") ?? "[]",
     confirm: formData.get("confirm") ?? "no",
+    send_mode: formData.get("send_mode") ?? "immediate",
+    daily_limit: formData.get("daily_limit") ?? undefined,
+    start_at: formData.get("start_at") ?? "",
   });
   if (!parsed.success) {
     const first = parsed.error.issues[0];
@@ -313,6 +321,117 @@ export async function importCsvCampaign(
 
   const businessName = await getOrgName(ctx.org.id);
 
+  const channelsToSend: Array<"email" | "sms"> = [];
+  if (data.channel === "email" || data.channel === "both") channelsToSend.push("email");
+  if (data.channel === "sms" || data.channel === "both") channelsToSend.push("sms");
+
+  // -------------------------------------------------------------------------
+  // Scheduled (drip) mode: stage recipients with a per-row send time and hand
+  // off to the cron. Nothing is sent inline here.
+  // -------------------------------------------------------------------------
+  if (data.send_mode === "scheduled") {
+    const dailyLimit = data.daily_limit ?? 25;
+
+    // Start now (or at the requested time, never in the past).
+    const now = new Date();
+    let startAt = now;
+    if (data.start_at) {
+      const parsedDate = new Date(data.start_at);
+      if (!Number.isNaN(parsedDate.getTime()) && parsedDate.getTime() > now.getTime()) {
+        startAt = parsedDate;
+      }
+    }
+
+    // Flatten (row × channel) into the ordered send list, then schedule it.
+    const pairs = rows.flatMap((row) =>
+      channelsToSend.map((ch) => ({ row, channel: ch })),
+    );
+    const schedule = buildSchedule(pairs.length, dailyLimit, startAt);
+    const daySpan = campaignDaySpan(pairs.length, dailyLimit);
+
+    const [campaign] = await db
+      .insert(reviewRequestCampaigns)
+      .values({
+        orgId: ctx.org.id,
+        locationId: data.location_id ? data.location_id : null,
+        name: data.campaign_name,
+        channel: data.channel,
+        status: "scheduled",
+        sendMode: "scheduled",
+        dailyLimit,
+        scheduledStartAt: startAt,
+        messageTemplate: data.message_template,
+        googleReviewUrl: reviewUrl,
+        createdByUserId: ctx.user.id,
+      })
+      .returning();
+    if (!campaign) {
+      return { ok: false, error: "Could not create campaign." };
+    }
+
+    if (pairs.length > 0) {
+      await db.insert(reviewRequestRecipients).values(
+        pairs.map((p, i) => ({
+          campaignId: campaign.id,
+          orgId: ctx.org.id,
+          customerName: p.row.name,
+          customerEmail: p.row.email,
+          customerPhone: p.row.phone,
+          channel: p.channel,
+          status: "pending" as const,
+          scheduledAt: schedule[i] ?? startAt,
+        })),
+      );
+    }
+
+    await db.insert(reviewRequestEvents).values({
+      orgId: ctx.org.id,
+      campaignId: campaign.id,
+      eventName: "campaign.created",
+      payload: {
+        kind: "csv_import",
+        mode: "scheduled",
+        rows: rows.length,
+        recipients: pairs.length,
+        channel: data.channel,
+        dailyLimit,
+        daySpan,
+        startAt: startAt.toISOString(),
+      },
+    });
+
+    await writeAudit({
+      orgId: ctx.org.id,
+      actorUserId: ctx.user.id,
+      action: "review_request.scheduled",
+      targetType: "campaign",
+      targetId: campaign.id,
+      metadata: {
+        kind: "csv_import",
+        rows: rows.length,
+        recipients: pairs.length,
+        channel: data.channel,
+        dailyLimit,
+        daySpan,
+        startAt: startAt.toISOString(),
+      },
+    });
+
+    revalidatePath("/review-requests");
+    return {
+      ok: true,
+      results: [
+        {
+          channel: "email",
+          status: `scheduled ${pairs.length} send${pairs.length === 1 ? "" : "s"} over ${daySpan} day${daySpan === 1 ? "" : "s"} (${dailyLimit}/day)`,
+        },
+      ],
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Immediate mode (unchanged): send inline as the campaign is created.
+  // -------------------------------------------------------------------------
   const [campaign] = await db
     .insert(reviewRequestCampaigns)
     .values({
@@ -337,10 +456,6 @@ export async function importCsvCampaign(
     payload: { kind: "csv_import", rows: rows.length, channel: data.channel },
   });
 
-  const channelsToSend: Array<"email" | "sms"> = [];
-  if (data.channel === "email" || data.channel === "both") channelsToSend.push("email");
-  if (data.channel === "sms" || data.channel === "both") channelsToSend.push("sms");
-
   let sent = 0;
   let skipped = 0;
   let failed = 0;
@@ -355,6 +470,7 @@ export async function importCsvCampaign(
           customerName: row.name,
           customerEmail: row.email,
           customerPhone: row.phone,
+          channel: ch,
           status: "pending",
         })
         .returning();

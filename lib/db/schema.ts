@@ -523,8 +523,15 @@ export const reviewRequestCampaigns = pgTable(
     name: text("name").notNull(),
     /** "email" | "sms" | "both" */
     channel: text("channel").notNull(),
-    /** "draft" | "queued" | "sending" | "sent" | "failed" | "completed" */
+    /** "draft" | "scheduled" | "queued" | "sending" | "sent" | "failed"
+     *  | "paused" | "completed" */
     status: text("status").notNull().default("draft"),
+    /** "immediate" | "scheduled" — drip campaigns pace sends over days. */
+    sendMode: text("send_mode").notNull().default("immediate"),
+    /** Max recipients to send per rolling day in scheduled mode (null = all). */
+    dailyLimit: integer("daily_limit"),
+    /** When a scheduled campaign should begin (null = as soon as possible). */
+    scheduledStartAt: timestamp("scheduled_start_at", { withTimezone: true }),
     messageTemplate: text("message_template").notNull(),
     googleReviewUrl: text("google_review_url"),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, {
@@ -557,8 +564,16 @@ export const reviewRequestRecipients = pgTable(
     customerName: text("customer_name").notNull(),
     customerEmail: text("customer_email"),
     customerPhone: text("customer_phone"),
+    /** Channel this row sends on: "email" | "sms". Set for scheduled drips so
+     *  the cron knows how to dispatch; null on legacy immediate rows. */
+    channel: text("channel"),
     /** "pending" | "sent" | "skipped" | "failed" | "clicked" | "reviewed" */
     status: text("status").notNull().default("pending"),
+    /** When this recipient is due to send (null = immediately / as soon as the
+     *  cron picks it up). Drip campaigns pre-compute this per recipient. */
+    scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+    /** Number of send attempts — for retry visibility/safety. */
+    attemptCount: integer("attempt_count").notNull().default(0),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     clickedAt: timestamp("clicked_at", { withTimezone: true }),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -573,6 +588,9 @@ export const reviewRequestRecipients = pgTable(
     ),
     orgIdx: index("review_request_recipients_org_idx").on(t.orgId),
     statusIdx: index("review_request_recipients_status_idx").on(t.status),
+    scheduledAtIdx: index("review_request_recipients_scheduled_at_idx").on(
+      t.scheduledAt,
+    ),
     createdAtIdx: index("review_request_recipients_created_at_idx").on(
       t.createdAt,
     ),

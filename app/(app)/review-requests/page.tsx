@@ -23,7 +23,10 @@ import {
 } from "@/lib/billing/entitlements";
 import { describeSendEnvironment } from "@/lib/review-requests/send";
 import { getReviewRequestTemplate } from "@/lib/review-requests/templates";
-import { computeReviewRequestAnalytics } from "@/lib/analytics/review-requests";
+import {
+  computeReviewRequestAnalytics,
+  computeCampaignProgress,
+} from "@/lib/analytics/review-requests";
 import { ManualForm } from "./manual-form";
 import { CsvForm } from "./csv-form";
 import { QrPanel } from "./qr-panel";
@@ -49,6 +52,8 @@ export default async function ReviewRequestsPage() {
           name: reviewRequestCampaigns.name,
           channel: reviewRequestCampaigns.channel,
           status: reviewRequestCampaigns.status,
+          sendMode: reviewRequestCampaigns.sendMode,
+          dailyLimit: reviewRequestCampaigns.dailyLimit,
           createdAt: reviewRequestCampaigns.createdAt,
         })
         .from(reviewRequestCampaigns)
@@ -56,6 +61,11 @@ export default async function ReviewRequestsPage() {
         .orderBy(desc(reviewRequestCampaigns.createdAt))
         .limit(5),
     ]);
+
+  const campaignProgress = await computeCampaignProgress(
+    ctx.org.id,
+    recentCampaigns.map((c) => c.id),
+  );
 
   const env = describeSendEnvironment();
   const template = getReviewRequestTemplate(ctx.org.industry);
@@ -198,22 +208,41 @@ export default async function ReviewRequestsPage() {
           </CardHeader>
           <CardContent>
             <ul className="divide-y text-sm">
-              {recentCampaigns.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-2"
-                >
-                  <div>
-                    <p className="font-medium">{c.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {c.channel} · {c.status}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {c.createdAt.toLocaleString()}
-                  </span>
-                </li>
-              ))}
+              {recentCampaigns.map((c) => {
+                const progress = campaignProgress.get(c.id);
+                const isScheduled = c.sendMode === "scheduled";
+                return (
+                  <li
+                    key={c.id}
+                    className="flex flex-wrap items-center justify-between gap-3 py-2"
+                  >
+                    <div>
+                      <p className="flex items-center gap-2 font-medium">
+                        {c.name}
+                        {isScheduled ? (
+                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                            Drip{c.dailyLimit ? ` · ${c.dailyLimit}/day` : ""}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {c.channel} · {c.status}
+                        {progress
+                          ? ` · ${progress.sent} sent / ${progress.pending} pending${progress.failed > 0 ? ` / ${progress.failed} failed` : ""}`
+                          : ""}
+                      </p>
+                      {isScheduled && progress?.nextScheduledAt ? (
+                        <p className="text-xs text-muted-foreground">
+                          Next send: {progress.nextScheduledAt.toLocaleString()}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {c.createdAt.toLocaleString()}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </CardContent>
         </Card>

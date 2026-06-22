@@ -9,6 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { importCsvCampaign, type SendActionState } from "./actions";
 import { renderTemplate } from "@/lib/review-requests/templates";
+import {
+  DAILY_LIMIT_OPTIONS,
+  campaignDaySpan,
+} from "@/lib/review-requests/schedule";
 
 type Props = {
   defaultBusinessName: string;
@@ -48,9 +52,21 @@ export function CsvForm({
     defaultReviewUrl || "https://g.page/r/your-business/review",
   );
   const [channel, setChannel] = useState<"email" | "sms" | "both">("email");
+  const [sendMode, setSendMode] = useState<"immediate" | "scheduled">(
+    "immediate",
+  );
+  const [dailyLimit, setDailyLimit] = useState<number>(25);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const validRows = useMemo(() => rows.filter((r) => r.valid), [rows]);
+
+  // Recipients = rows × channels (email and/or sms).
+  const channelCount = channel === "both" ? 2 : 1;
+  const sendCount = validRows.length * channelCount;
+  const daySpan = useMemo(
+    () => campaignDaySpan(sendCount, dailyLimit),
+    [sendCount, dailyLimit],
+  );
 
   const preview = useMemo(
     () =>
@@ -206,6 +222,82 @@ export function CsvForm({
         </div>
       </div>
 
+      <fieldset className="space-y-3 rounded-md border p-4">
+        <legend className="px-1 text-sm font-medium">Sending schedule</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input
+              type="radio"
+              name="send_mode"
+              value="immediate"
+              checked={sendMode === "immediate"}
+              onChange={() => setSendMode("immediate")}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Send immediately</span>
+              <span className="block text-xs text-muted-foreground">
+                All requests go out as soon as you confirm.
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+            <input
+              type="radio"
+              name="send_mode"
+              value="scheduled"
+              checked={sendMode === "scheduled"}
+              onChange={() => setSendMode("scheduled")}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Drip over several days</span>
+              <span className="block text-xs text-muted-foreground">
+                Spread sends out to look natural and stay within limits.
+              </span>
+            </span>
+          </label>
+        </div>
+
+        {sendMode === "scheduled" ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="csv-daily-limit">Daily send limit</Label>
+              <select
+                id="csv-daily-limit"
+                name="daily_limit"
+                value={dailyLimit}
+                onChange={(e) => setDailyLimit(Number(e.target.value))}
+                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {DAILY_LIMIT_OPTIONS.map((n) => (
+                  <option key={n} value={n}>
+                    {n} per day
+                  </option>
+                ))}
+              </select>
+              {sendCount > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {sendCount} send{sendCount === 1 ? "" : "s"} over {daySpan}{" "}
+                  day{daySpan === 1 ? "" : "s"}.
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="csv-start-at">Start (optional)</Label>
+              <Input
+                id="csv-start-at"
+                name="start_at"
+                type="datetime-local"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to begin within the hour.
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </fieldset>
+
       <div className="space-y-1.5">
         <Label htmlFor="csv-template">Message template</Label>
         <Textarea
@@ -238,7 +330,7 @@ export function CsvForm({
         )}
       />
 
-      <ConfirmAndSubmit count={validRows.length} />
+      <ConfirmAndSubmit count={sendCount} sendMode={sendMode} />
 
       {state?.error ? (
         <Alert variant="destructive">
@@ -248,7 +340,9 @@ export function CsvForm({
       ) : null}
       {state?.ok ? (
         <Alert variant="success">
-          <AlertTitle>Campaign sent</AlertTitle>
+          <AlertTitle>
+            {sendMode === "scheduled" ? "Campaign scheduled" : "Campaign sent"}
+          </AlertTitle>
           <AlertDescription>
             {state.results?.[0]?.status ?? "Done."}
           </AlertDescription>
@@ -258,9 +352,16 @@ export function CsvForm({
   );
 }
 
-function ConfirmAndSubmit({ count }: { count: number }) {
+function ConfirmAndSubmit({
+  count,
+  sendMode,
+}: {
+  count: number;
+  sendMode: "immediate" | "scheduled";
+}) {
   const { pending } = useFormStatus();
   const [confirmed, setConfirmed] = useState(false);
+  const verb = sendMode === "scheduled" ? "Schedule" : "Send";
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-secondary/30 p-3">
       <label className="flex items-center gap-2 text-sm">
@@ -275,9 +376,11 @@ function ConfirmAndSubmit({ count }: { count: number }) {
       </label>
       <Button type="submit" disabled={pending || !confirmed || count === 0}>
         {pending
-          ? "Sending…"
+          ? sendMode === "scheduled"
+            ? "Scheduling…"
+            : "Sending…"
           : count > 0
-            ? `Send ${count} request${count === 1 ? "" : "s"}`
+            ? `${verb} ${count} request${count === 1 ? "" : "s"}`
             : "Add rows to send"}
       </Button>
     </div>
