@@ -1,5 +1,9 @@
+import { eq } from "drizzle-orm";
 import { inngest } from "../client";
 import { processReviewAlert } from "@/lib/notifications/review-alerts";
+import { tryAttributeReview } from "@/lib/review-requests/attribution";
+import { db } from "@/lib/db/client";
+import { reviews } from "@/lib/db/schema";
 
 export const sendReviewAlerts = inngest.createFunction(
   {
@@ -10,9 +14,28 @@ export const sendReviewAlerts = inngest.createFunction(
   },
   async ({ event, step }) => {
     const { orgId, reviewId } = event.data;
-    const result = await step.run("process-review-alert", () =>
+
+    const alertResult = await step.run("process-review-alert", () =>
       processReviewAlert({ orgId, reviewId }),
     );
-    return result;
+
+    const attribution = await step.run("try-attribute-review", async () => {
+      const review = await db
+        .select({ reviewerName: reviews.reviewerName })
+        .from(reviews)
+        .where(eq(reviews.id, reviewId))
+        .limit(1)
+        .then((r) => r[0] ?? null);
+
+      if (!review) return { matched: false, recipientId: null };
+
+      return tryAttributeReview({
+        orgId,
+        reviewId,
+        reviewerName: review.reviewerName,
+      });
+    });
+
+    return { ...alertResult, attribution };
   },
 );
