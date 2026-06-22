@@ -38,11 +38,18 @@ export function GoogleConnectionCard(props: ConnectionProps) {
         <CardContent className="space-y-3">
           {!props.isLiveMode ? (
             <Alert>
-              <AlertTitle>Demo mode</AlertTitle>
+              <AlertTitle>Preview mode</AlertTitle>
               <AlertDescription>
-                Using fixture data until Google Business Profile approval is
-                complete. Set <code>GBP_LIVE=true</code> in your environment to
-                use the live API.
+                We&apos;re completing Google&apos;s review-management approval.
+                You can connect now — we&apos;ll switch you to your live review
+                data automatically once access is granted, and your setup is
+                saved either way.
+                {props.isAdmin ? (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    Internal: set <code>GBP_LIVE=true</code> once Google grants
+                    API access.
+                  </span>
+                ) : null}
               </AlertDescription>
             </Alert>
           ) : null}
@@ -76,10 +83,11 @@ export function GoogleConnectionCard(props: ConnectionProps) {
       <CardContent className="space-y-4">
         {!props.isLiveMode ? (
           <Alert>
-            <AlertTitle>Demo mode</AlertTitle>
+            <AlertTitle>Preview mode</AlertTitle>
             <AlertDescription>
-              Using fixture data until Google Business Profile approval is
-              complete.
+              Showing example data while we complete Google&apos;s
+              review-management approval. Your live reviews appear here
+              automatically once access is granted.
             </AlertDescription>
           </Alert>
         ) : null}
