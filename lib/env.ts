@@ -85,6 +85,11 @@ const serverSchema = z.object({
   INNGEST_EVENT_KEY: z.string().min(1),
   INNGEST_SIGNING_KEY: z.string().min(1),
 
+  // Admin allowlist — comma-separated emails permitted to use internal
+  // admin/QA tooling (e.g. the Live Audit E2E test page). Not a secret, but
+  // kept in env so it's configurable per environment. Empty/unset = no admins.
+  ADMIN_EMAILS: z.string().optional(),
+
   // Sentry (server-side)
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ORG: z.string().optional(),

@@ -246,6 +246,18 @@ export async function getAuditByLeadId(
   return rows[0] ?? null;
 }
 
+/** Fetch a single audit lead by id (no join). Returns null when absent. */
+export async function getAuditLeadById(
+  leadId: string,
+): Promise<AuditLead | null> {
+  const rows = await db
+    .select()
+    .from(auditLeads)
+    .where(eq(auditLeads.id, leadId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
 export function extractReport(request: AuditRequest): {
   report: ReputationReport | null;
   rationale: string | null;
