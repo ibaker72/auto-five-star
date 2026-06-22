@@ -2,6 +2,7 @@ import { withSentryConfig } from "@sentry/nextjs";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  serverExternalPackages: ["pdfkit"],
   experimental: {
     serverActions: { allowedOrigins: ["localhost:3000"] },
   },

@@ -20,6 +20,7 @@ import {
   findCompetitors,
   type PlaceMatch,
 } from "@/lib/integrations/google-places";
+import { stripE2EPrefix } from "./e2e-core";
 
 export type CreateAuditInput = {
   businessName: string;
@@ -84,9 +85,10 @@ export async function createAudit(
   }
   const city = input.city?.trim() || null;
 
-  // Attempt the real Places lookup first. Returns null on missing key / any
-  // failure so we degrade gracefully to sample mode.
-  const place = await findBusinessOnPlaces(businessName, city);
+  // Strip E2E test prefix for the Places lookup so admin test runs can still
+  // match real businesses. The lead record keeps the prefixed name.
+  const searchName = stripE2EPrefix(businessName);
+  const place = await findBusinessOnPlaces(searchName, city);
 
   const insertedLeads = await db
     .insert(auditLeads)

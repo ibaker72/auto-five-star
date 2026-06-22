@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   E2E_TEST_PREFIX,
   withE2EPrefix,
+  stripE2EPrefix,
   isE2ETestBusinessName,
   isE2ETestLead,
   assertCleanableTestLead,
@@ -39,6 +40,27 @@ describe("E2E naming + guards", () => {
     expect(isE2ETestLead({ businessName: `${E2E_TEST_PREFIX} Foo` })).toBe(true);
     expect(isE2ETestLead({ businessName: "Real Co" })).toBe(false);
     expect(isE2ETestLead(null)).toBe(false);
+  });
+
+  it("strips the E2E prefix for external lookups", () => {
+    expect(stripE2EPrefix(`${E2E_TEST_PREFIX} Smith HVAC`)).toBe("Smith HVAC");
+  });
+
+  it("returns non-prefixed names unchanged", () => {
+    expect(stripE2EPrefix("Real Business")).toBe("Real Business");
+  });
+
+  it("handles whitespace around the prefix", () => {
+    expect(stripE2EPrefix(`  ${E2E_TEST_PREFIX}  Smith HVAC  `)).toBe("Smith HVAC");
+  });
+
+  it("returns the full string if stripping would leave it empty", () => {
+    expect(stripE2EPrefix(E2E_TEST_PREFIX)).toBe(E2E_TEST_PREFIX);
+  });
+
+  it("round-trips: withE2EPrefix then stripE2EPrefix returns the original", () => {
+    const original = "Smith HVAC";
+    expect(stripE2EPrefix(withE2EPrefix(original))).toBe(original);
   });
 });
 
