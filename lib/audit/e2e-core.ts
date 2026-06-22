@@ -23,6 +23,19 @@ export function isE2ETestBusinessName(name: string | null | undefined): boolean 
   return name.trim().startsWith(E2E_TEST_PREFIX);
 }
 
+/**
+ * Strip the E2E prefix from a business name, returning the original name.
+ * If the name doesn't have the prefix, returns it unchanged. Used so that
+ * external lookups (e.g. Google Places) search the real business name while
+ * the stored lead keeps the prefix for safety.
+ */
+export function stripE2EPrefix(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed.startsWith(E2E_TEST_PREFIX)) return trimmed;
+  const rest = trimmed.slice(E2E_TEST_PREFIX.length).trim();
+  return rest.length > 0 ? rest : trimmed;
+}
+
 /** The single safety gate used by cleanup. Operates on anything name-shaped. */
 export function isE2ETestLead(
   lead: { businessName: string } | null | undefined,

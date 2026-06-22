@@ -40,7 +40,17 @@ export async function GET(
   }
 
   const { lead, request } = found;
-  const { report } = extractReport(request);
+
+  let report: ReturnType<typeof extractReport>["report"];
+  try {
+    ({ report } = extractReport(request));
+  } catch (err) {
+    console.error(`[api/audit/pdf] malformed reportJson for id=${id}`, err);
+    return NextResponse.json(
+      { error: "Audit report data is malformed." },
+      { status: 500 },
+    );
+  }
 
   if (!report) {
     return NextResponse.json(
@@ -57,7 +67,12 @@ export async function GET(
       demoMode: request.demoMode,
     });
   } catch (err) {
-    console.error(`[api/audit/pdf] generation failed for id=${id}`, err);
+    const message = err instanceof Error ? err.message : String(err);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error(
+      `[api/audit/pdf] generation failed for id=${id}: ${message}`,
+      { stack, businessName: lead.businessName, demoMode: request.demoMode },
+    );
     return NextResponse.json(
       { error: "Could not generate PDF." },
       { status: 500 },
