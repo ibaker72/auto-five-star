@@ -338,6 +338,12 @@ export default async function SettingsPage({
                 placeholder="+15551234567"
                 defaultValue={me?.notificationPhone ?? ""}
               />
+              {smsAllowed && me?.alertsSmsEnabled && !me.notificationPhone ? (
+                <p className="text-xs text-rose-600">
+                  SMS alerts are enabled but no phone number is set — alerts
+                  will be skipped until you add one.
+                </p>
+              ) : null}
             </div>
 
             <Button type="submit">Save preferences</Button>

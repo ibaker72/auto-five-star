@@ -153,7 +153,6 @@ export async function processReviewAlert(
           continue;
         }
         if (!r.notificationPhone) {
-          // TODO: add a UI prompt for owners to set a phone number on /settings.
           await writeNotificationRow({
             orgId: ctx.org.id,
             userId: r.userId,
