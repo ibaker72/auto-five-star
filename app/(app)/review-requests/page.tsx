@@ -25,8 +25,13 @@ import { describeSendEnvironment } from "@/lib/review-requests/send";
 import { getReviewRequestTemplate } from "@/lib/review-requests/templates";
 import {
   computeReviewRequestAnalytics,
-  computeCampaignProgress,
+  getCampaignAnalytics,
 } from "@/lib/analytics/review-requests";
+import {
+  formatPct,
+  roiSummaryText,
+  type CampaignMetrics,
+} from "@/lib/analytics/campaign-analytics";
 import { ManualForm } from "./manual-form";
 import { CsvForm } from "./csv-form";
 import { QrPanel } from "./qr-panel";
@@ -62,7 +67,7 @@ export default async function ReviewRequestsPage() {
         .limit(5),
     ]);
 
-  const campaignProgress = await computeCampaignProgress(
+  const campaignAnalytics = await getCampaignAnalytics(
     ctx.org.id,
     recentCampaigns.map((c) => c.id),
   );
@@ -201,51 +206,150 @@ export default async function ReviewRequestsPage() {
       {recentCampaigns.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Recent campaigns</CardTitle>
+            <CardTitle>Campaign performance</CardTitle>
             <CardDescription>
-              The last five review-request batches sent from this account.
+              How your last five review-request campaigns are converting —
+              sends, clicks, and attributed reviews.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="divide-y text-sm">
-              {recentCampaigns.map((c) => {
-                const progress = campaignProgress.get(c.id);
-                const isScheduled = c.sendMode === "scheduled";
-                return (
-                  <li
-                    key={c.id}
-                    className="flex flex-wrap items-center justify-between gap-3 py-2"
-                  >
-                    <div>
-                      <p className="flex items-center gap-2 font-medium">
-                        {c.name}
-                        {isScheduled ? (
-                          <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
-                            Drip{c.dailyLimit ? ` · ${c.dailyLimit}/day` : ""}
-                          </span>
-                        ) : null}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {c.channel} · {c.status}
-                        {progress
-                          ? ` · ${progress.sent} sent / ${progress.pending} pending${progress.failed > 0 ? ` / ${progress.failed} failed` : ""}`
-                          : ""}
-                      </p>
-                      {isScheduled && progress?.nextScheduledAt ? (
-                        <p className="text-xs text-muted-foreground">
-                          Next send: {progress.nextScheduledAt.toLocaleString()}
-                        </p>
-                      ) : null}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {c.createdAt.toLocaleString()}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-4">
+              {recentCampaigns.map((c) => (
+                <CampaignPerformanceRow
+                  key={c.id}
+                  name={c.name}
+                  channel={c.channel}
+                  status={c.status}
+                  sendMode={c.sendMode}
+                  dailyLimit={c.dailyLimit}
+                  createdAt={c.createdAt}
+                  metrics={campaignAnalytics.get(c.id)}
+                />
+              ))}
+            </div>
           </CardContent>
         </Card>
+      ) : null}
+    </div>
+  );
+}
+
+function StatChip({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "warning" | "success";
+}) {
+  const toneClass =
+    tone === "success"
+      ? "text-emerald-700"
+      : tone === "warning"
+        ? "text-amber-700"
+        : "text-foreground";
+  return (
+    <div className="rounded-md border bg-background px-3 py-2">
+      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {label}
+      </p>
+      <p className={`text-lg font-semibold tabular-nums ${toneClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function CampaignPerformanceRow({
+  name,
+  channel,
+  status,
+  sendMode,
+  dailyLimit,
+  createdAt,
+  metrics,
+}: {
+  name: string;
+  channel: string;
+  status: string;
+  sendMode: string;
+  dailyLimit: number | null;
+  createdAt: Date;
+  metrics?: CampaignMetrics;
+}) {
+  const m = metrics;
+  const isScheduled = sendMode === "scheduled";
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="flex items-center gap-2 font-medium">
+            {name}
+            {isScheduled ? (
+              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                Drip{dailyLimit ? ` · ${dailyLimit}/day` : ""}
+              </span>
+            ) : null}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {channel} · {status}
+            {m?.lastSentAt ? ` · last sent ${m.lastSentAt.toLocaleDateString()}` : ""}
+          </p>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {createdAt.toLocaleDateString()}
+        </span>
+      </div>
+
+      {m ? (
+        <>
+          <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <StatChip label="Recipients" value={m.total.toString()} />
+            <StatChip label="Sent" value={m.sent.toString()} />
+            <StatChip
+              label="Pending"
+              value={m.pending.toString()}
+              tone={m.pending > 0 ? "warning" : "default"}
+            />
+            <StatChip
+              label="Failed"
+              value={(m.failed + m.skipped).toString()}
+              tone={m.failed + m.skipped > 0 ? "warning" : "default"}
+            />
+            <StatChip label="Clicked" value={m.clicked.toString()} />
+            <StatChip
+              label="Reviews"
+              value={m.reviews.toString()}
+              tone={m.reviews > 0 ? "success" : "default"}
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span>
+              Click-through:{" "}
+              <strong className="text-foreground">
+                {formatPct(m.clickThroughRate)}
+              </strong>
+            </span>
+            <span>
+              Review conversion:{" "}
+              <strong className="text-foreground">
+                {formatPct(m.reviewConversionRate)}
+              </strong>
+            </span>
+            {isScheduled && m.nextScheduledAt ? (
+              <span>
+                Next send:{" "}
+                <strong className="text-foreground">
+                  {m.nextScheduledAt.toLocaleString()}
+                </strong>
+              </span>
+            ) : null}
+          </div>
+
+          <p className="mt-3 rounded-md bg-secondary/40 px-3 py-2 text-sm">
+            {roiSummaryText(m)}
+          </p>
+        </>
       ) : null}
     </div>
   );
