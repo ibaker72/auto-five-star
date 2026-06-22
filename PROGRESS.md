@@ -463,3 +463,26 @@ Deferred (callouts in DECISIONS.md):
   in, the redirect/landing wiring will land in PR #10
 - Inngest scheduler for drip campaigns
 - Per-campaign analytics drill-down (we ship aggregate tiles in PR #9)
+
+## Launch Readiness / Production QA pass
+
+- [x] Audited marketing, pricing, free-audit, results, review-requests,
+      settings, dashboard, and locations copy against the actually implemented
+      feature set (`lib/billing/plans.ts` is the source of truth)
+- [x] Removed internal env-flag detail from customer-facing UI: the
+      `GBP_LIVE=true` instruction on the Google connect card (now gated behind
+      admin) and the `SMS_LIVE` / `EMAIL_LIVE` code references in the
+      review-requests compliance notice (now plain-language)
+- [x] Reworded GBP "Demo mode / fixture data" → customer-friendly "Preview
+      mode" with an honest "switches to live automatically once approved" note
+- [x] Settings: SMS alerts now disclose that texts begin once the messaging
+      number is approved (driven by the real `SMS_LIVE` flag), with email
+      covering alerts until then
+- [x] Added `docs/LAUNCH_CHECKLIST.md` (env vars, production E2E steps, pending
+      external setup, test-lead cleanup) + linked from README
+- [x] Verified mobile responsiveness of free audit, audit results (competitor
+      table scrolls), admin audit-test, and review-requests / campaign
+      analytics (responsive stat-chip grid)
+- [x] Resend domain verification left as an external DNS item (app already
+      reports the failure clearly)
+- [x] `test`, `typecheck`, `lint`, `build` clean

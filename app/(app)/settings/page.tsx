@@ -20,6 +20,7 @@ import {
   listIndustryPacks,
 } from "@/lib/templates/industry-packs";
 import { cn } from "@/lib/utils";
+import { describeSendEnvironment } from "@/lib/review-requests/send";
 import { InstallAppButton } from "@/components/install-app-button";
 import {
   saveBrandVoice,
@@ -49,6 +50,7 @@ export default async function SettingsPage({
 
   const cfg = PLAN_CONFIG[ctx.org.plan];
   const smsAllowed = cfg.smsAlerts;
+  const { smsLive } = describeSendEnvironment();
   const pack = getIndustryPack(ctx.org.industry);
   const packs = listIndustryPacks();
 
@@ -320,7 +322,9 @@ export default async function SettingsPage({
                 </div>
                 <p className="text-xs text-muted-foreground">
                   {smsAllowed
-                    ? "We text you only for urgent negative reviews."
+                    ? smsLive
+                      ? "We text you only for urgent negative reviews."
+                      : "We text you only for urgent negative reviews. Texts begin once your messaging number is approved — until then we'll keep alerting you by email."
                     : "Available on Growth and Pro."}
                 </p>
               </div>

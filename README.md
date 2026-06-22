@@ -412,6 +412,9 @@ Starter and Growth: 7-day free trial, card required. Reputation Guard is hands-o
 
 - [`DECISIONS.md`](./DECISIONS.md) — architectural decisions log
 - [`PROGRESS.md`](./PROGRESS.md) — weekly deliverables tracker
+- [`docs/LAUNCH_CHECKLIST.md`](./docs/LAUNCH_CHECKLIST.md) — launch readiness:
+  required env vars, production E2E steps, pending external setup, test-lead
+  cleanup
 - [`.env.example`](./.env.example) — every config key
 
 ### Brand visual system (PR #9)

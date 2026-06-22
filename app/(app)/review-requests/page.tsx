@@ -366,8 +366,9 @@ function ComplianceNotice() {
           incentive language by default — please keep your templates honest.
         </p>
         <p>
-          SMS sends respect your <code>SMS_LIVE</code> flag and existing
-          Twilio safety patterns. Emails respect <code>EMAIL_LIVE</code>.
+          Email requests send as soon as your sending domain is verified. SMS
+          requests begin once your text-messaging number is approved — until
+          then they&apos;re held safely rather than sent.
         </p>
       </AlertDescription>
     </Alert>
