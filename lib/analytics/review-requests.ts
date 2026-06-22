@@ -1,7 +1,12 @@
 import "server-only";
-import { and, eq, gt, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { reviewRequestRecipients } from "@/lib/db/schema";
+import {
+  computeCampaignMetrics,
+  emptyCounts,
+  type CampaignMetrics,
+} from "./campaign-analytics";
 
 export type ReviewRequestAnalytics = {
   sent: number;
@@ -58,87 +63,62 @@ export async function computeReviewRequestAnalytics(
   };
 }
 
-export type CampaignProgress = {
-  sent: number;
-  pending: number;
-  failed: number;
-  total: number;
-  nextScheduledAt: Date | null;
-};
-
 /**
- * Per-campaign send progress for the campaigns list — sent / pending / failed
- * counts plus the next upcoming scheduled send window (for drip campaigns).
- * Returns an empty map when there are no campaign ids.
+ * Per-campaign analytics for the campaigns list / ROI view. Aggregates the
+ * recipient table using its cumulative timestamp columns (sent_at / clicked_at
+ * / reviewed_at) so clicks and attributed reviews are counted accurately even
+ * though `status` only holds the latest state. Returns a map keyed by campaign
+ * id (every requested id is present, zero-filled if it has no recipients).
  */
-export async function computeCampaignProgress(
+export async function getCampaignAnalytics(
   orgId: string,
   campaignIds: string[],
-): Promise<Map<string, CampaignProgress>> {
-  const out = new Map<string, CampaignProgress>();
+): Promise<Map<string, CampaignMetrics>> {
+  const out = new Map<string, CampaignMetrics>();
   if (campaignIds.length === 0) return out;
 
-  const statusRows = await db
-    .select({
-      campaignId: reviewRequestRecipients.campaignId,
-      status: reviewRequestRecipients.status,
-      total: sql<number>`count(*)::int`,
-    })
-    .from(reviewRequestRecipients)
-    .where(
-      and(
-        eq(reviewRequestRecipients.orgId, orgId),
-        inArray(reviewRequestRecipients.campaignId, campaignIds),
-      ),
-    )
-    .groupBy(
-      reviewRequestRecipients.campaignId,
-      reviewRequestRecipients.status,
-    );
+  // Seed every requested campaign with zeroes so callers never get undefined.
+  for (const id of campaignIds) {
+    out.set(id, computeCampaignMetrics(emptyCounts()));
+  }
 
-  const nextRows = await db
+  const rows = await db
     .select({
       campaignId: reviewRequestRecipients.campaignId,
-      nextAt: sql<Date | null>`min(${reviewRequestRecipients.scheduledAt})`,
+      total: sql<number>`count(*)::int`,
+      sent: sql<number>`(count(*) filter (where ${reviewRequestRecipients.sentAt} is not null))::int`,
+      pending: sql<number>`(count(*) filter (where ${reviewRequestRecipients.status} = 'pending'))::int`,
+      failed: sql<number>`(count(*) filter (where ${reviewRequestRecipients.status} = 'failed'))::int`,
+      skipped: sql<number>`(count(*) filter (where ${reviewRequestRecipients.status} = 'skipped'))::int`,
+      clicked: sql<number>`(count(*) filter (where ${reviewRequestRecipients.clickedAt} is not null))::int`,
+      reviews: sql<number>`(count(*) filter (where ${reviewRequestRecipients.reviewedAt} is not null))::int`,
+      lastSentAt: sql<Date | null>`max(${reviewRequestRecipients.sentAt})`,
+      nextScheduledAt: sql<Date | null>`min(${reviewRequestRecipients.scheduledAt}) filter (where ${reviewRequestRecipients.status} = 'pending' and ${reviewRequestRecipients.scheduledAt} > now())`,
     })
     .from(reviewRequestRecipients)
     .where(
       and(
         eq(reviewRequestRecipients.orgId, orgId),
         inArray(reviewRequestRecipients.campaignId, campaignIds),
-        eq(reviewRequestRecipients.status, "pending"),
-        gt(reviewRequestRecipients.scheduledAt, new Date()),
       ),
     )
     .groupBy(reviewRequestRecipients.campaignId);
 
-  const nextById = new Map<string, Date | null>();
-  for (const r of nextRows) {
-    nextById.set(r.campaignId, r.nextAt ? new Date(r.nextAt) : null);
-  }
-
-  for (const id of campaignIds) {
-    out.set(id, {
-      sent: 0,
-      pending: 0,
-      failed: 0,
-      total: 0,
-      nextScheduledAt: nextById.get(id) ?? null,
-    });
-  }
-
-  for (const r of statusRows) {
-    const p = out.get(r.campaignId);
-    if (!p) continue;
-    const n = Number(r.total);
-    p.total += n;
-    if (r.status === "sent" || r.status === "clicked" || r.status === "reviewed") {
-      p.sent += n;
-    } else if (r.status === "failed" || r.status === "skipped") {
-      p.failed += n;
-    } else if (r.status === "pending") {
-      p.pending += n;
-    }
+  for (const r of rows) {
+    out.set(
+      r.campaignId,
+      computeCampaignMetrics({
+        total: Number(r.total),
+        sent: Number(r.sent),
+        pending: Number(r.pending),
+        failed: Number(r.failed),
+        skipped: Number(r.skipped),
+        clicked: Number(r.clicked),
+        reviews: Number(r.reviews),
+        lastSentAt: r.lastSentAt ? new Date(r.lastSentAt) : null,
+        nextScheduledAt: r.nextScheduledAt ? new Date(r.nextScheduledAt) : null,
+      }),
+    );
   }
 
   return out;
