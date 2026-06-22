@@ -1,6 +1,6 @@
 "use client";
 
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -8,7 +8,8 @@ type CtaEvent =
   | "start_trial_from_audit_results"
   | "book_call_from_audit_results"
   | "pricing_from_audit_results"
-  | "features_from_audit_results";
+  | "features_from_audit_results"
+  | "audit_pdf_downloaded";
 
 type Props = {
   requestId: string;
@@ -20,14 +21,28 @@ function getSessionId(): string {
   return window.localStorage.getItem("afv_session_id") ?? "";
 }
 
+function fireBeacon(payload: string) {
+  if (typeof navigator !== "undefined" && "sendBeacon" in navigator) {
+    const blob = new Blob([payload], { type: "application/json" });
+    navigator.sendBeacon("/api/funnel/event", blob);
+  } else {
+    fetch("/api/funnel/event", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  }
+}
+
 export function TrackedCtas({ requestId, leadId }: Props) {
   const [pending, startTransition] = useTransition();
+  const [downloading, setDownloading] = useState(false);
 
   function track(eventType: CtaEvent, href: string) {
     const sessionId = getSessionId();
     startTransition(async () => {
       try {
-        // Use sendBeacon so the request fires even as we navigate away.
         const payload = JSON.stringify({
           type: eventType,
           lead_id: leadId,
@@ -35,26 +50,37 @@ export function TrackedCtas({ requestId, leadId }: Props) {
           session_id: sessionId,
           metadata: {},
         });
-        if (
-          typeof navigator !== "undefined" &&
-          "sendBeacon" in navigator
-        ) {
-          const blob = new Blob([payload], { type: "application/json" });
-          navigator.sendBeacon("/api/funnel/event", blob);
-        } else {
-          await fetch("/api/funnel/event", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: payload,
-            keepalive: true,
-          });
-        }
+        fireBeacon(payload);
       } catch {
         // Best-effort; never block navigation.
       } finally {
         window.location.href = href;
       }
     });
+  }
+
+  function downloadPdf() {
+    if (downloading) return;
+    setDownloading(true);
+
+    const sessionId = getSessionId();
+    const payload = JSON.stringify({
+      type: "audit_pdf_downloaded" as CtaEvent,
+      lead_id: leadId,
+      request_id: requestId,
+      session_id: sessionId,
+      metadata: {},
+    });
+    fireBeacon(payload);
+
+    const link = document.createElement("a");
+    link.href = `/api/audit/${requestId}/pdf`;
+    link.download = "";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    setTimeout(() => setDownloading(false), 3000);
   }
 
   return (
@@ -80,6 +106,15 @@ export function TrackedCtas({ requestId, leadId }: Props) {
         }
       >
         Book a demo
+      </Button>
+      <Button
+        size="lg"
+        variant="outline"
+        className="w-full sm:w-auto"
+        disabled={pending || downloading}
+        onClick={downloadPdf}
+      >
+        {downloading ? "Downloading…" : "Download PDF Report"}
       </Button>
       <Button
         size="lg"
