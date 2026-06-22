@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gte } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import {
   auditLeads,
@@ -224,6 +224,24 @@ export async function getAuditByRequestId(
     .from(auditRequests)
     .innerJoin(auditLeads, eq(auditLeads.id, auditRequests.auditLeadId))
     .where(eq(auditRequests.id, requestId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Fetch the most recent audit (lead + request) for a given lead id. Used by
+ * the follow-up email sequence, which is triggered by lead id. Returns null
+ * when the lead has no request rows (or was deleted).
+ */
+export async function getAuditByLeadId(
+  leadId: string,
+): Promise<AuditResultRow | null> {
+  const rows = await db
+    .select({ lead: auditLeads, request: auditRequests })
+    .from(auditRequests)
+    .innerJoin(auditLeads, eq(auditLeads.id, auditRequests.auditLeadId))
+    .where(eq(auditRequests.auditLeadId, leadId))
+    .orderBy(desc(auditRequests.createdAt))
     .limit(1);
   return rows[0] ?? null;
 }
