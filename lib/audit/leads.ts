@@ -8,10 +8,18 @@ import {
   type AuditRequest,
 } from "@/lib/db/schema";
 import {
+  buildCompetitorComparison,
   buildDemoInputs,
+  computeRealReputationReport,
   computeReputationReport,
+  type CompetitorStat,
   type ReputationReport,
 } from "./score";
+import {
+  findBusinessOnPlaces,
+  findCompetitors,
+  type PlaceMatch,
+} from "@/lib/integrations/google-places";
 
 export type CreateAuditInput = {
   businessName: string;
@@ -58,7 +66,11 @@ async function isRateLimited(email: string): Promise<boolean> {
 
 /**
  * Create an audit lead + audit request, compute the report, persist results.
- * Always returns a usable record (demo mode when we lack live review data).
+ *
+ * Prefers a real audit built from Google Places public data (rating, review
+ * volume, nearby competitors). Falls back to a clearly-labeled sample/demo
+ * report when Places is unavailable (no key), the business can't be matched,
+ * or any Places call fails. Always returns a usable record.
  */
 export async function createAudit(
   input: CreateAuditInput,
@@ -70,6 +82,11 @@ export async function createAudit(
   if (businessName.length === 0) {
     throw new Error("Business name required");
   }
+  const city = input.city?.trim() || null;
+
+  // Attempt the real Places lookup first. Returns null on missing key / any
+  // failure so we degrade gracefully to sample mode.
+  const place = await findBusinessOnPlaces(businessName, city);
 
   const insertedLeads = await db
     .insert(auditLeads)
@@ -79,14 +96,49 @@ export async function createAudit(
       website: input.website?.trim() || null,
       gbpUrl: input.gbpUrl?.trim() || null,
       industry: input.industry?.trim() || null,
-      city: input.city?.trim() || null,
+      city,
       phone: input.phone?.trim() || null,
       source: input.source ?? "website",
+      placeId: place?.placeId ?? null,
+      googleRating: place?.rating ?? null,
+      googleReviewCount: place?.reviewCount ?? null,
     })
     .returning();
   const lead = insertedLeads[0];
   if (!lead) throw new Error("Failed to create audit lead");
 
+  if (place) {
+    const built = await buildRealAudit({ place, city });
+    const insertedRequests = await db
+      .insert(auditRequests)
+      .values({
+        auditLeadId: lead.id,
+        status: "completed",
+        score: built.report.score,
+        reportJson: {
+          report: built.report,
+          inputs: {
+            averageRating: place.rating,
+            reviewCount: place.reviewCount,
+          },
+          place: {
+            placeId: place.placeId,
+            name: place.name,
+            formattedAddress: place.formattedAddress,
+            primaryType: place.primaryType,
+          },
+          rationale: built.rationale,
+          version: "v2-places",
+        } as Record<string, unknown>,
+        demoMode: false,
+      })
+      .returning();
+    const request = insertedRequests[0];
+    if (!request) throw new Error("Failed to create audit request");
+    return { lead, request, report: built.report, rationale: built.rationale };
+  }
+
+  // Sample/demo fallback (unchanged behavior).
   const seed = `${businessName.toLowerCase()}|${email}|${lead.id}`;
   const { inputs, rationale } = buildDemoInputs(seed);
   const report = computeReputationReport(inputs);
@@ -115,6 +167,48 @@ export async function createAudit(
   if (!request) throw new Error("Failed to create audit request");
 
   return { lead, request, report, rationale };
+}
+
+/**
+ * Build a real audit report from a matched place: fetch nearby competitors,
+ * compute the comparison, and produce a public-data report. Competitor lookup
+ * failures degrade to a report without comparison (findCompetitors returns []).
+ */
+async function buildRealAudit(args: {
+  place: PlaceMatch;
+  city: string | null;
+}): Promise<{ report: ReputationReport; rationale: string }> {
+  const competitors = await findCompetitors({
+    business: args.place,
+    city: args.city,
+    limit: 3,
+  });
+
+  const comparison =
+    competitors.length > 0
+      ? buildCompetitorComparison(
+          competitors.map(
+            (c): CompetitorStat => ({
+              name: c.name,
+              rating: c.rating,
+              reviewCount: c.reviewCount,
+            }),
+          ),
+          args.place.rating,
+        )
+      : undefined;
+
+  const report = computeRealReputationReport(
+    { averageRating: args.place.rating, reviewCount: args.place.reviewCount ?? 0 },
+    { comparison },
+  );
+
+  const rationale =
+    "Based on your public Google Business Profile data" +
+    (comparison ? " and nearby competitors" : "") +
+    ". Connect your profile in AutoFiveStar to unlock reply gaps, review recency, and a weekly action plan.";
+
+  return { report, rationale };
 }
 
 export type AuditResultRow = {

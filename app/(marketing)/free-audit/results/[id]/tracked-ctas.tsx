@@ -7,7 +7,8 @@ import { cn } from "@/lib/utils";
 type CtaEvent =
   | "start_trial_from_audit_results"
   | "book_call_from_audit_results"
-  | "pricing_from_audit_results";
+  | "pricing_from_audit_results"
+  | "features_from_audit_results";
 
 type Props = {
   requestId: string;
@@ -78,7 +79,18 @@ export function TrackedCtas({ requestId, leadId }: Props) {
           track("book_call_from_audit_results", "/contact?topic=demo")
         }
       >
-        Book setup call
+        Book a demo
+      </Button>
+      <Button
+        size="lg"
+        variant="outline"
+        className="w-full sm:w-auto"
+        disabled={pending}
+        onClick={() =>
+          track("features_from_audit_results", "/features#replies")
+        }
+      >
+        See how AutoFiveStar replies to reviews
       </Button>
       <button
         type="button"

@@ -6,6 +6,7 @@ import {
   integer,
   bigint,
   boolean,
+  real,
   timestamp,
   jsonb,
   uniqueIndex,
@@ -632,6 +633,11 @@ export const auditLeads = pgTable(
     city: text("city"),
     phone: text("phone"),
     source: text("source"),
+    // Real public-data enrichment from Google Places (null when Places is
+    // unavailable and the audit falls back to sample/demo mode).
+    placeId: text("place_id"),
+    googleRating: real("google_rating"),
+    googleReviewCount: integer("google_review_count"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -642,6 +648,7 @@ export const auditLeads = pgTable(
   (t) => ({
     emailIdx: index("audit_leads_email_idx").on(t.email),
     createdAtIdx: index("audit_leads_created_at_idx").on(t.createdAt),
+    placeIdIdx: index("audit_leads_place_id_idx").on(t.placeId),
   }),
 );
 

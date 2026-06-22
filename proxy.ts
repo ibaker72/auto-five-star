@@ -28,6 +28,8 @@ const PUBLIC_PREFIXES = [
   "/twitter-image",
   "/apple-icon",
   "/apple-touch-icon",
+  // Public review-request click tracker — recipients are not logged in.
+  "/r",
   // Unauthenticated API endpoints (webhooks, ingestion, public lookups):
   "/api/stripe/webhook",
   "/api/inngest",
