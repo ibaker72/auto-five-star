@@ -12,6 +12,7 @@ import {
   sendAuditReportEmail,
 } from "@/lib/audit/email";
 import { recordFunnelEvent } from "@/lib/analytics/funnel";
+import { inngest } from "@/lib/inngest/client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -153,8 +154,10 @@ export async function POST(request: NextRequest) {
     const reportEmail = await sendAuditReportEmail({
       to: email,
       businessName,
+      requestId: result.request.id,
       report: result.report,
-      resultsUrl,
+      googleRating: result.lead.googleRating,
+      googleReviewCount: result.lead.googleReviewCount,
     });
     await recordFunnelEvent({
       type: reportEmail.ok ? "audit_email_sent" : "audit_email_failed",
@@ -195,6 +198,21 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("[api/audit] lead notification failed", err);
+  }
+
+  // Kick off the multi-day follow-up drip. Best-effort and fire-and-forget:
+  // if Inngest isn't configured (or the dispatch fails) the captured lead and
+  // immediate email are unaffected. Idempotent on lead id inside the function.
+  try {
+    await inngest.send({
+      name: "audit/lead.created",
+      data: {
+        leadId: result.lead.id,
+        requestId: result.request.id,
+      },
+    });
+  } catch (err) {
+    console.error("[api/audit] follow-up enqueue failed", err);
   }
 
   const accept = request.headers.get("accept") ?? "";

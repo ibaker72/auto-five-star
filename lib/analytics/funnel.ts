@@ -17,6 +17,7 @@ export const FUNNEL_EVENT_TYPES = [
   "pricing_from_audit_results",
   "features_from_audit_results",
   "audit_pdf_downloaded",
+  "audit_followup_sent",
 ] as const;
 
 export type FunnelEventType = (typeof FUNNEL_EVENT_TYPES)[number];
