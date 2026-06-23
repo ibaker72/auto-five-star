@@ -7,11 +7,25 @@ import {
   reviewRequestEvents,
 } from "@/lib/db/schema";
 
+// Recipient ids are UUIDs. Validate the shape before touching the DB so a
+// malformed link (e.g. a scanner hitting /r/<garbage>) returns the same
+// graceful fallback redirect instead of raising an invalid-uuid DB error.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function appFallbackUrl(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://www.autofivestar.com";
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ recipientId: string }> },
 ) {
   const { recipientId } = await params;
+
+  if (!UUID_RE.test(recipientId)) {
+    return NextResponse.redirect(appFallbackUrl());
+  }
 
   const row = await db
     .select({
@@ -28,9 +42,7 @@ export async function GET(
     .then((r) => r[0] ?? null);
 
   if (!row || !row.campaign.googleReviewUrl) {
-    const fallback =
-      process.env.NEXT_PUBLIC_APP_URL ?? "https://www.autofivestar.com";
-    return NextResponse.redirect(fallback);
+    return NextResponse.redirect(appFallbackUrl());
   }
 
   const now = new Date();
