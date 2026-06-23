@@ -228,9 +228,9 @@ export default async function AuditResultsPage({
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               <p>
-                Higher is better. We score four dimensions out of 100 total:
-                rating quality (40), volume (20), recency (20), and response
-                rate (20).
+                {report.breakdownItems && report.breakdownItems.length > 0
+                  ? "Higher is better. From your public Google data we score two dimensions out of 100: rating quality (60) and review volume (40). Connect your profile to also score review recency and reply rate."
+                  : "Higher is better. We score four dimensions out of 100 total: rating quality (40), volume (20), recency (20), and response rate (20)."}
               </p>
               <div className="mt-4 rounded-md bg-secondary/60 p-3">
                 <p className="text-sm font-semibold text-foreground">

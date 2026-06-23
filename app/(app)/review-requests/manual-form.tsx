@@ -235,13 +235,15 @@ function EnvNotice({
   const wantsSms = channel === "sms" || channel === "both";
   const bits: string[] = [];
   if (wantsEmail && !emailLive)
-    bits.push("Email runs in fixture mode (logs only).");
+    bits.push("Email requests begin sending once your sending domain is verified.");
   if (wantsSms && !smsLive)
-    bits.push("SMS runs in fixture mode / skipped in prod until A2P approved.");
+    bits.push(
+      "SMS requests begin once your text-messaging number is approved — until then they're held safely rather than sent.",
+    );
   if (bits.length === 0) return null;
   return (
     <Alert>
-      <AlertTitle>Dev mode</AlertTitle>
+      <AlertTitle>Before you send</AlertTitle>
       <AlertDescription>{bits.join(" ")}</AlertDescription>
     </Alert>
   );
